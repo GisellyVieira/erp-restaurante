@@ -635,7 +635,8 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
+with app.app_context():
+    criar_banco()
 
 if __name__ == "__main__":
-    criar_banco()
     app.run(debug=True)
