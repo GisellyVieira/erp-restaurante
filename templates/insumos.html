@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Insumos - ERP Restaurante</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="layout">
+
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="logo-menu">🔥</div>
+            <h2>ERP Restaurante</h2>
+        </div>
+
+        <nav>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a class="ativo" href="{{ url_for('insumos') }}">Insumos</a>
+            <a href="{{ url_for('produtos') }}">Produtos</a>
+            <a href="{{ url_for('ficha_tecnica') }}">Ficha Técnica</a>
+            <a href="{{ url_for('vendas') }}">Vendas</a>
+            <a href="{{ url_for('financeiro') }}">Caixa</a>
+            <a href="{{ url_for('relatorios') }}">Relatórios</a>
+            <a href="{{ url_for('configuracoes') }}">Configurações</a>
+            <a href="{{ url_for('logout') }}">Sair</a>
+        </nav>
+    </aside>
+
+    <main class="conteudo">
+
+        <header class="topo">
+            <div>
+                <h1>Gestão de Insumos</h1>
+                <p>Cadastre matérias-primas e registre compras de forma simples.</p>
+            </div>
+        </header>
+
+        <section class="painel">
+            <h2>Novo Insumo</h2>
+
+            <form method="POST" class="form-grid insumo-form">
+                <input type="text" name="nome" placeholder="Nome do insumo" required>
+
+                <select name="unidade" required>
+                    <option value="">Unidade de medida</option>
+                    <option value="kg">kg</option>
+                    <option value="g">g</option>
+                    <option value="L">Litro</option>
+                    <option value="ml">ml</option>
+                    <option value="un">Unidade</option>
+                    <option value="pacote">Pacote</option>
+                    <option value="caixa">Caixa</option>
+                </select>
+
+                <input type="hidden" name="categoria" value="Matéria-prima">
+
+                <button type="submit">Cadastrar Insumo</button>
+            </form>
+        </section>
+
+        <section class="painel">
+            <h2>Controle de Insumos</h2>
+
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Insumo</th>
+                            <th>Unidade</th>
+                            <th>Estoque Atual</th>
+                            <th>Custo Médio</th>
+                            <th>Status</th>
+                            <th>Registrar Compra</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                    {% for i in insumos %}
+                        <tr>
+                            <td>{{ i.nome }}</td>
+                            <td>{{ i.unidade }}</td>
+                            <td>{{ "%.2f"|format(i.estoque_atual()) }} {{ i.unidade }}</td>
+                            <td>R$ {{ "%.2f"|format(i.custo_medio_unitario()) }}</td>
+
+                            <td>
+                                {% if i.status_estoque() == "Sem estoque" %}
+                                    <span class="status alerta">Sem estoque</span>
+                                {% elif i.status_estoque() == "Ponto de pedido" %}
+                                    <span class="status alerta">Ponto de Pedido</span>
+                                {% elif i.status_estoque() == "Cobertura baixa" %}
+                                    <span class="status atencao">Cobertura Baixa</span>
+                                {% else %}
+                                    <span class="status normal">Normal</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <form method="POST" action="{{ url_for('entrada_estoque', insumo_id=i.id) }}" class="form-compra">
+                                    <input type="number" step="0.01" name="quantidade" placeholder="Qtd" required>
+                                    <input type="number" step="0.01" name="valor_total" placeholder="Valor Pago" required>
+                                    <button type="submit">+</button>
+                                </form>
+                            </td>
+
+                            <td>
+                                <a class="btn-excluir" href="{{ url_for('excluir_insumo', id=i.id) }}">Excluir</a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="vazio">Nenhum insumo cadastrado.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+</div>
+
+</body>
+</html>

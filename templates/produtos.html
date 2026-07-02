@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Produtos - ERP Restaurante</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="layout">
+
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="logo-menu">🔥</div>
+            <h2>ERP Restaurante</h2>
+        </div>
+
+        <nav>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('insumos') }}">Insumos</a>
+            <a class="ativo" href="{{ url_for('produtos') }}">Produtos</a>
+            <a href="{{ url_for('ficha_tecnica') }}">Ficha Técnica</a>
+            <a href="{{ url_for('vendas') }}">Vendas</a>
+            <a href="{{ url_for('financeiro') }}">Caixa</a>
+            <a href="{{ url_for('relatorios') }}">Relatórios</a>
+            <a href="{{ url_for('configuracoes') }}">Configurações</a>
+            <a href="{{ url_for('logout') }}">Sair</a>
+        </nav>
+    </aside>
+
+    <main class="conteudo">
+
+        <header class="topo">
+            <div>
+                <h1>Cadastro de Produtos</h1>
+                <p>Cadastre produtos produzidos e produtos de revenda.</p>
+            </div>
+        </header>
+
+        <section class="painel">
+            <h2>Novo Produto</h2>
+
+            <form method="POST" class="form-grid produto-form">
+
+                <input type="text" name="nome" placeholder="Nome do produto" required>
+
+                <select name="categoria" required>
+                    <option value="">Categoria</option>
+                    <option value="Espetos">Espetos</option>
+                    <option value="Bebidas">Bebidas</option>
+                    <option value="Acompanhamentos">Acompanhamentos</option>
+                    <option value="Combos">Combos</option>
+                    <option value="Outros">Outros</option>
+                </select>
+
+                <input type="number" step="0.01" name="preco_venda" placeholder="Preço de venda R$" required>
+
+                <select name="tipo_produto" required>
+                    <option value="Produzido">Produto Produzido</option>
+                    <option value="Revenda">Produto de Revenda</option>
+                </select>
+
+                <input type="number" step="0.01" name="custo_compra" placeholder="Custo de compra R$">
+
+                <input type="number" step="0.01" name="estoque_produto" placeholder="Estoque inicial">
+
+                <button type="submit">Cadastrar Produto</button>
+
+            </form>
+        </section>
+
+        <section class="painel">
+            <h2>Produtos Cadastrados</h2>
+
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Tipo</th>
+                            <th>Categoria</th>
+                            <th>Preço de Venda</th>
+                            <th>Custo</th>
+                            <th>Estoque Revenda</th>
+                            <th>Margem de Contribuição</th>
+                            <th>% Margem</th>
+                            <th>Preço Sugerido</th>
+                            <th>Situação</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for p in produtos %}
+                        <tr>
+                            <td>{{ p.nome }}</td>
+                            <td>{{ p.tipo_produto }}</td>
+                            <td>{{ p.categoria }}</td>
+                            <td>R$ {{ "%.2f"|format(p.preco_venda) }}</td>
+                            <td>R$ {{ "%.2f"|format(p.custo_materia_prima()) }}</td>
+
+                            {% if p.tipo_produto == "Revenda" %}
+                                <td>{{ "%.2f"|format(p.estoque_produto) }}</td>
+                            {% else %}
+                                <td>-</td>
+                            {% endif %}
+
+                            <td>R$ {{ "%.2f"|format(p.margem_contribuicao()) }}</td>
+                            <td>{{ "%.1f"|format(p.percentual_margem()) }}%</td>
+                            <td>R$ {{ "%.2f"|format(p.preco_sugerido()) }}</td>
+
+                            {% if p.situacao_preco() == "Revisar" %}
+                                <td><span class="status atencao">Revisar</span></td>
+                            {% elif p.situacao_preco() == "Sem custo" %}
+                                <td><span class="status alerta">Sem custo</span></td>
+                            {% else %}
+                                <td><span class="status normal">Adequado</span></td>
+                            {% endif %}
+
+                            {% if p.ativo %}
+                                <td><span class="status normal">Ativo</span></td>
+                            {% else %}
+                                <td><span class="status alerta">Inativo</span></td>
+                            {% endif %}
+
+                            <td>
+                                <a class="btn-pequeno" href="{{ url_for('alterar_status_produto', id=p.id) }}">Alterar</a>
+                                <a class="btn-excluir" href="{{ url_for('excluir_produto', id=p.id) }}">Excluir</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="12" class="vazio">Nenhum produto cadastrado ainda.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+</div>
+
+</body>
+</html>

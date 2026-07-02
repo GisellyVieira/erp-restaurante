@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Vendas - ERP Restaurante</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="layout">
+    <aside class="sidebar">
+        <div class="brand"><div class="logo-menu">🔥</div><h2>ERP Restaurante</h2></div>
+        <nav>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('insumos') }}">Insumos</a>
+            <a href="{{ url_for('produtos') }}">Produtos</a>
+            <a href="{{ url_for('ficha_tecnica') }}">Ficha Técnica</a>
+            <a class="ativo" href="{{ url_for('vendas') }}">Vendas</a>
+            <a href="{{ url_for('financeiro') }}">Financeiro</a>
+            <a href="{{ url_for('relatorios') }}">Relatórios</a>
+            <a href="{{ url_for('configuracoes') }}">Configurações</a>
+            <a href="{{ url_for('logout') }}">Sair</a>
+        </nav>
+    </aside>
+
+    <main class="conteudo">
+        <header class="topo">
+            <h1>Registro de Vendas</h1>
+            <p>Registre a venda e o sistema baixa automaticamente os insumos da ficha técnica.</p>
+        </header>
+
+        {% with mensagens = get_flashed_messages() %}
+            {% if mensagens %}
+                <div class="alerta">{{ mensagens[0] }}</div>
+            {% endif %}
+        {% endwith %}
+
+        <section class="painel">
+            <h2>Nova Venda</h2>
+            <form method="POST" class="form-grid venda-form">
+                <select name="produto_id" required>
+                    <option value="">Produto vendido</option>
+                    {% for p in produtos %}
+                        <option value="{{ p.id }}">{{ p.nome }} - R$ {{ "%.2f"|format(p.preco_venda) }}</option>
+                    {% endfor %}
+                </select>
+
+                <input type="number" name="quantidade" min="1" placeholder="Quantidade vendida" required>
+
+                <button type="submit">Registrar Venda</button>
+            </form>
+        </section>
+
+        <section class="painel">
+            <h2>Histórico de Vendas</h2>
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Produto</th>
+                            <th>Quantidade</th>
+                            <th>Receita</th>
+                            <th>Custo da Mercadoria Vendida</th>
+                            <th>Margem de Contribuição</th>
+                            <th>% Margem</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in vendas %}
+                        <tr>
+                            <td>{{ v.data.strftime("%d/%m/%Y %H:%M") }}</td>
+                            <td>{{ v.produto.nome }}</td>
+                            <td>{{ v.quantidade }}</td>
+                            <td>R$ {{ "%.2f"|format(v.receita_total) }}</td>
+                            <td>R$ {{ "%.2f"|format(v.cmv_total) }}</td>
+                            <td>R$ {{ "%.2f"|format(v.margem_total) }}</td>
+                            <td>{{ "%.1f"|format(v.margem_percentual()) }}%</td>
+                            <td><a class="btn-excluir" href="{{ url_for('excluir_venda', id=v.id) }}">Excluir</a></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="8" class="vazio">Nenhuma venda registrada ainda.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+
+</body>
+</html>

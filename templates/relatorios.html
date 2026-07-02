@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatórios - ERP Restaurante</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="layout">
+
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="logo-menu">🔥</div>
+            <h2>ERP Restaurante</h2>
+        </div>
+
+        <nav>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('insumos') }}">Insumos</a>
+            <a href="{{ url_for('produtos') }}">Produtos</a>
+            <a href="{{ url_for('ficha_tecnica') }}">Ficha Técnica</a>
+            <a href="{{ url_for('vendas') }}">Vendas</a>
+            <a href="{{ url_for('financeiro') }}">Financeiro</a>
+            <a class="ativo" href="{{ url_for('relatorios') }}">Relatórios</a>
+            <a href="{{ url_for('configuracoes') }}">Configurações</a>
+            <a href="{{ url_for('logout') }}">Sair</a>
+        </nav>
+    </aside>
+
+    <main class="conteudo">
+
+        <header class="topo">
+            <div>
+                <h1>Relatórios Gerenciais</h1>
+                <p>Indicadores consolidados para análise de estoque, vendas e financeiro.</p>
+            </div>
+        </header>
+        <section class="painel">
+    <a class="btn-exportar" href="{{ url_for('exportar_caixa') }}">
+        📥 Exportar Fechamento de Caixa
+    </a>
+</section>
+
+        <section class="cards">
+            <div class="card">
+                <span>Receita Total</span>
+                <h2>R$ {{ "%.2f"|format(receita_total) }}</h2>
+            </div>
+
+            <div class="card">
+                <span>Custo da Mercadoria Vendida</span>
+                <h2>R$ {{ "%.2f"|format(cmv_total) }}</h2>
+            </div>
+
+            <div class="card">
+                <span>Margem de Contribuição</span>
+                <h2>R$ {{ "%.2f"|format(margem_total) }}</h2>
+            </div>
+
+            <div class="card">
+                <span>Lucro Operacional Estimado</span>
+                <h2>R$ {{ "%.2f"|format(lucro_operacional) }}</h2>
+            </div>
+        </section>
+
+        <section class="cards">
+            <div class="card">
+                <span>% Margem de Contribuição</span>
+                <h2>{{ "%.1f"|format(margem_percentual) }}%</h2>
+            </div>
+
+            <div class="card">
+                <span>Despesas Operacionais</span>
+                <h2>R$ {{ "%.2f"|format(despesas_operacionais) }}</h2>
+            </div>
+
+            <div class="card">
+                <span>Valor em Estoque</span>
+                <h2>R$ {{ "%.2f"|format(valor_estoque) }}</h2>
+            </div>
+
+            <div class="card">
+                <span>Quantidade Vendida</span>
+                <h2>{{ total_vendido }}</h2>
+            </div>
+        </section>
+
+        <section class="painel">
+            <h2>Relatório de Estoque</h2>
+
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Insumo</th>
+                            <th>Unidade</th>
+                            <th>Estoque Atual</th>
+                            <th>Custo Médio Unitário</th>
+                            <th>Valor em Estoque</th>
+                            <th>Consumo Médio Diário</th>
+                            <th>Cobertura de Estoque</th>
+                            <th>Estoque de Segurança</th>
+                            <th>Ponto de Pedido</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for i in insumos %}
+                        <tr>
+                            <td>{{ i.nome }}</td>
+                            <td>{{ i.unidade }}</td>
+                            <td>{{ "%.2f"|format(i.estoque_atual()) }} {{ i.unidade }}</td>
+                            <td>R$ {{ "%.2f"|format(i.custo_medio_unitario()) }}</td>
+                            <td>R$ {{ "%.2f"|format(i.estoque_atual() * i.custo_medio_unitario()) }}</td>
+                            <td>{{ "%.2f"|format(i.consumo_medio_diario()) }} {{ i.unidade }}/dia</td>
+                            <td>{{ "%.1f"|format(i.cobertura_estoque()) }} dias</td>
+                            <td>{{ "%.2f"|format(i.estoque_seguranca()) }} {{ i.unidade }}</td>
+                            <td>{{ "%.2f"|format(i.ponto_pedido()) }} {{ i.unidade }}</td>
+
+                            {% if i.status_estoque() == "Normal" %}
+                                <td><span class="status normal">Normal</span></td>
+                            {% elif i.status_estoque() == "Cobertura baixa" %}
+                                <td><span class="status atencao">Cobertura baixa</span></td>
+                            {% else %}
+                                <td><span class="status alerta">{{ i.status_estoque() }}</span></td>
+                            {% endif %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="10" class="vazio">Nenhum insumo cadastrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="painel">
+            <h2>Relatório de Produtos</h2>
+
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Categoria</th>
+                            <th>Preço de Venda</th>
+                            <th>Custo da Matéria-Prima</th>
+                            <th>Margem de Contribuição</th>
+                            <th>% Margem</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for p in produtos %}
+                        <tr>
+                            <td>{{ p.nome }}</td>
+                            <td>{{ p.categoria }}</td>
+                            <td>R$ {{ "%.2f"|format(p.preco_venda) }}</td>
+                            <td>R$ {{ "%.2f"|format(p.custo_materia_prima()) }}</td>
+                            <td>R$ {{ "%.2f"|format(p.margem_contribuicao()) }}</td>
+                            <td>{{ "%.1f"|format(p.percentual_margem()) }}%</td>
+
+                            {% if p.ativo %}
+                                <td><span class="status normal">Ativo</span></td>
+                            {% else %}
+                                <td><span class="status alerta">Inativo</span></td>
+                            {% endif %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="vazio">Nenhum produto cadastrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="painel">
+            <h2>Ranking de Produtos Vendidos</h2>
+
+            <div class="tabela-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Quantidade Vendida</th>
+                            <th>Receita</th>
+                            <th>CMV</th>
+                            <th>Margem de Contribuição</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for nome, dados in ranking_produtos %}
+                        <tr>
+                            <td>{{ nome }}</td>
+                            <td>{{ dados.quantidade }}</td>
+                            <td>R$ {{ "%.2f"|format(dados.receita) }}</td>
+                            <td>R$ {{ "%.2f"|format(dados.cmv) }}</td>
+                            <td>R$ {{ "%.2f"|format(dados.margem) }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="vazio">Nenhuma venda registrada.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+</div>
+
+</body>
+</html>

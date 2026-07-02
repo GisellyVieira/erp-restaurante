@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - ERP Restaurante</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-body">
+
+<div class="login-card">
+    <div class="logo-fogo">🔥</div>
+    <h1>ERP Restaurante</h1>
+    <p>Gestão de Estoques e Apoio à Decisão</p>
+
+    {% with mensagens = get_flashed_messages() %}
+        {% if mensagens %}
+            <div class="alerta">{{ mensagens[0] }}</div>
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <label>Usuário</label>
+        <input type="text" name="usuario" placeholder="Digite o usuário" required>
+
+        <label>Senha</label>
+        <input type="password" name="senha" placeholder="Digite a senha" required>
+
+        <button type="submit">Entrar</button>
+    </form>
+
+    <span class="acesso">Usuário inicial: admin | Senha: 123456</span>
+</div>
+
+</body>
+</html>

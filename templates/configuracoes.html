@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Configurações - ERP Restaurante</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="layout">
+
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="logo-menu">🔥</div>
+            <h2>ERP Restaurante</h2>
+        </div>
+
+        <nav>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('insumos') }}">Insumos</a>
+            <a href="{{ url_for('produtos') }}">Produtos</a>
+            <a href="{{ url_for('ficha_tecnica') }}">Ficha Técnica</a>
+            <a href="{{ url_for('vendas') }}">Vendas</a>
+            <a href="{{ url_for('financeiro') }}">Caixa</a>
+            <a href="{{ url_for('relatorios') }}">Relatórios</a>
+            <a class="ativo" href="{{ url_for('configuracoes') }}">Configurações</a>
+            <a href="{{ url_for('logout') }}">Sair</a>
+        </nav>
+    </aside>
+
+    <main class="conteudo">
+
+        <header class="topo">
+            <div>
+                <h1>Configurações</h1>
+                <p>Área administrativa do sistema.</p>
+            </div>
+        </header>
+
+        {% with mensagens = get_flashed_messages() %}
+            {% if mensagens %}
+                <div class="alerta">{{ mensagens[0] }}</div>
+            {% endif %}
+        {% endwith %}
+
+        <section class="cards">
+            <div class="card">
+                <span>Usuário logado</span>
+                <h2>{{ nome }}</h2>
+            </div>
+
+            <div class="card">
+                <span>Versão do sistema</span>
+                <h2>1.0</h2>
+            </div>
+
+            <div class="card">
+                <span>Banco de dados</span>
+                <h2>SQLite</h2>
+            </div>
+
+            <div class="card">
+                <span>Status</span>
+                <h2>Ativo</h2>
+            </div>
+        </section>
+
+        <section class="painel">
+            <h2>Status do Sistema</h2>
+
+            <div class="config-grid">
+                <div class="config-card">
+                    <h3>Insumos</h3>
+                    <p>{{ total_insumos }} cadastrados</p>
+                </div>
+
+                <div class="config-card">
+                    <h3>Produtos</h3>
+                    <p>{{ total_produtos }} cadastrados</p>
+                </div>
+
+                <div class="config-card">
+                    <h3>Vendas</h3>
+                    <p>{{ total_vendas }} registradas</p>
+                </div>
+
+                <div class="config-card">
+                    <h3>Caixa</h3>
+                    <p>{{ total_lancamentos }} lançamentos</p>
+                </div>
+            </div>
+        </section>
+        <section class="painel">
+
+    <h2>Alterar Senha</h2>
+
+    <section class="painel">
+    <h2>Segurança</h2>
+
+    <button class="btn-exportar" onclick="abrirModalSenha()">
+        🔐 Alterar Senha
+    </button>
+</section>
+
+<div id="modalSenha" class="modal">
+    <div class="modal-conteudo">
+        <h2>Alterar Senha</h2>
+
+        <form method="POST" action="{{ url_for('alterar_senha') }}" class="form-grid">
+            <input type="password" name="senha_atual" placeholder="Senha atual" required>
+            <input type="password" name="nova_senha" placeholder="Nova senha" required>
+            <input type="password" name="confirmar_senha" placeholder="Confirmar nova senha" required>
+
+            <button type="submit">Salvar Nova Senha</button>
+            <button type="button" class="btn-cancelar" onclick="fecharModalSenha()">Cancelar</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirModalSenha() {
+    document.getElementById("modalSenha").style.display = "flex";
+}
+
+function fecharModalSenha() {
+    document.getElementById("modalSenha").style.display = "none";
+}
+</script>
+
+        <section class="painel">
+            <h2>Backup do Sistema</h2>
+
+            <p>
+                Faça uma cópia de segurança do banco de dados para evitar perda de informações.
+            </p>
+
+            <a class="btn-exportar" href="{{ url_for('fazer_backup') }}">
+                💾 Fazer Backup do Banco
+            </a>
+        </section>
+
+    </main>
+
+</div>
+
+</body>
+</html>

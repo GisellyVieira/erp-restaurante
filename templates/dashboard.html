@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - ERP Restaurante</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="layout">
+
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="logo-menu">🔥</div>
+            <h2>ERP Restaurante</h2>
+        </div>
+
+        <nav>
+            <a class="ativo" href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('insumos') }}">Insumos</a>
+            <a href="{{ url_for('produtos') }}">Produtos</a>
+            <a href="{{ url_for('ficha_tecnica') }}">Ficha Técnica</a>
+            <a href="{{ url_for('vendas') }}">Vendas</a>
+            <a href="{{ url_for('financeiro') }}">Financeiro</a>
+            <a href="{{ url_for('relatorios') }}">Relatórios</a>
+            <a href="{{ url_for('configuracoes') }}">Configurações</a>
+            <a href="{{ url_for('logout') }}">Sair</a>
+        </nav>
+    </aside>
+
+    <main class="conteudo">
+
+        <header class="topo">
+            <div>
+                <h1>Dashboard</h1>
+                <p>Bem-vindos</p>
+            </div>
+        </header>
+
+        <section class="cards">
+            <div class="card">
+                <span>Receita total</span>
+                <h2>R$ {{ "%.2f"|format(receita_total) }}</h2>
+            </div>
+
+            <div class="card">
+                <span>Custo da Mercadoria Vendida</span>
+                <h2>R$ {{ "%.2f"|format(cmv_total) }}</h2>
+            </div>
+
+            <div class="card">
+                <span>Margem de Contribuição</span>
+                <h2>R$ {{ "%.2f"|format(margem_total) }}</h2>
+            </div>
+
+            <div class="card">
+                <span>Lucro Operacional Estimado</span>
+                <h2>R$ {{ "%.2f"|format(lucro_operacional) }}</h2>
+            </div>
+        </section>
+
+        <section class="cards">
+            <div class="card">
+                <span>Despesas Operacionais</span>
+                <h2>R$ {{ "%.2f"|format(despesas_operacionais) }}</h2>
+            </div>
+
+            <div class="card">
+                <span>% Margem de Contribuição</span>
+                <h2>{{ "%.1f"|format(margem_percentual) }}%</h2>
+            </div>
+
+            <div class="card">
+                <span>Itens em ponto de pedido</span>
+                <h2>{{ itens_ponto_pedido }}</h2>
+            </div>
+
+            <div class="card">
+                <span>Valor em estoque</span>
+                <h2>R$ {{ "%.2f"|format(valor_estoque) }}</h2>
+            </div>
+        </section>
+        <section class="painel">
+    <h2>Alertas Gerenciais</h2>
+
+    <div class="alertas-grid">
+
+        <div class="alerta-card vermelho">
+            <h3>Insumos sem estoque</h3>
+            {% for i in insumos_sem_estoque %}
+                <p>{{ i.nome }} - {{ "%.2f"|format(i.estoque_atual()) }} {{ i.unidade }}</p>
+            {% else %}
+                <p>Nenhum insumo sem estoque.</p>
+            {% endfor %}
+        </div>
+
+        <div class="alerta-card laranja">
+            <h3>Ponto de Pedido</h3>
+            {% for i in insumos_ponto_pedido %}
+                <p>{{ i.nome }} - PP: {{ "%.2f"|format(i.ponto_pedido()) }} {{ i.unidade }}</p>
+            {% else %}
+                <p>Nenhum insumo em ponto de pedido.</p>
+            {% endfor %}
+        </div>
+
+        <div class="alerta-card amarelo">
+            <h3>Cobertura Baixa</h3>
+            {% for i in insumos_cobertura_baixa %}
+                <p>{{ i.nome }} - {{ "%.1f"|format(i.cobertura_estoque()) }} dias</p>
+            {% else %}
+                <p>Nenhum insumo com cobertura baixa.</p>
+            {% endfor %}
+        </div>
+
+        <div class="alerta-card vermelho">
+            <h3>Margem Baixa</h3>
+            {% for p in produtos_margem_baixa %}
+                <p>{{ p.nome }} - {{ "%.1f"|format(p.percentual_margem()) }}%</p>
+            {% else %}
+                <p>Nenhum produto com margem baixa.</p>
+            {% endfor %}
+        </div>
+
+    </div>
+</section>
+
+        <section class="painel">
+            <h2>Indicadores Técnicos</h2>
+            <p>
+                O sistema calcula Receita Total, Custo da Mercadoria Vendida,
+                Margem de Contribuição, Despesas Operacionais, Lucro Operacional
+                Estimado, Estoque Atual, Cobertura de Estoque, Estoque de Segurança
+                e Ponto de Pedido.
+            </p>
+        </section>
+
+    </main>
+
+</div>
+
+</body>
+</html>

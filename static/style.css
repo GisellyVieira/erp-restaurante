@@ -1,0 +1,735 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    background: #0f0f0f;
+    color: #ffffff;
+}
+
+.layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 260px;
+    background: #111111;
+    border-right: 1px solid #222222;
+    padding: 25px 18px;
+    position: fixed;
+    height: 100vh;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 35px;
+}
+
+.logo-menu {
+    font-size: 30px;
+}
+
+.brand h2 {
+    font-size: 18px;
+    color: #ff7a00;
+}
+
+.sidebar nav {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sidebar nav a {
+    text-decoration: none;
+    color: #cccccc;
+    padding: 13px 15px;
+    border-radius: 10px;
+    transition: 0.2s;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.ativo {
+    background: #ff7a00;
+    color: #111111;
+    font-weight: bold;
+}
+
+.conteudo {
+    flex: 1;
+    padding: 35px;
+    margin-left: 260px;
+    overflow-x: auto;
+}
+
+.topo {
+    margin-bottom: 30px;
+}
+
+.topo h1 {
+    color: #ff7a00;
+    font-size: 32px;
+}
+
+.topo p {
+    color: #bbbbbb;
+    margin-top: 5px;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-bottom: 30px;
+}
+
+.card {
+    background: #181818;
+    border: 1px solid #262626;
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 0 18px rgba(255, 122, 0, 0.08);
+}
+
+.card span {
+    color: #aaaaaa;
+    font-size: 14px;
+}
+
+.card h2 {
+    color: #ff7a00;
+    margin-top: 12px;
+    font-size: 26px;
+}
+
+.painel {
+    background: #181818;
+    border: 1px solid #262626;
+    border-radius: 16px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 0 18px rgba(255, 122, 0, 0.05);
+}
+
+.painel h2 {
+    color: #ff7a00;
+    margin-bottom: 18px;
+}
+
+.painel p {
+    color: #cccccc;
+    line-height: 1.6;
+}
+/* ============================
+   FORMULÁRIOS
+============================ */
+
+.form-grid{
+    display:grid;
+    gap:15px;
+}
+
+.insumo-form{
+    grid-template-columns:2fr 1fr 1fr;
+}
+
+.produto-form{
+    grid-template-columns:2fr 1fr 1fr 1fr;
+}
+
+.ficha-form{
+    grid-template-columns:1.4fr 1.4fr 1fr 1fr 1fr;
+}
+
+.venda-form{
+    grid-template-columns:2fr 1fr 1fr;
+}
+
+.financeiro-form{
+    grid-template-columns:1fr 1.3fr 2fr 1fr 1fr;
+}
+
+.form-grid input,
+.form-grid select,
+.form-grid textarea{
+    width:100%;
+    padding:12px;
+    border-radius:10px;
+    border:1px solid #333;
+    background:#0f0f0f;
+    color:#ffffff;
+    outline:none;
+    transition:.25s;
+    font-size:14px;
+}
+
+.form-grid input:focus,
+.form-grid select:focus,
+.form-grid textarea:focus{
+
+    border-color:#ff7a00;
+
+    box-shadow:0 0 12px rgba(255,122,0,.25);
+
+}
+
+.form-grid button{
+
+    background:#ff7a00;
+
+    color:#111;
+
+    border:none;
+
+    border-radius:10px;
+
+    padding:12px;
+
+    cursor:pointer;
+
+    font-weight:bold;
+
+    transition:.25s;
+
+}
+
+.form-grid button:hover{
+
+    background:#ff962e;
+
+    transform:translateY(-2px);
+
+}
+
+
+/* ============================
+      REGISTRO DE COMPRA
+============================ */
+
+.form-compra{
+
+    display:flex;
+
+    gap:8px;
+
+}
+
+.form-compra input{
+
+    width:90px;
+
+    padding:10px;
+
+    border-radius:8px;
+
+    border:1px solid #333;
+
+    background:#0f0f0f;
+
+    color:white;
+
+}
+
+.form-compra button{
+
+    width:45px;
+
+    border:none;
+
+    background:#ff7a00;
+
+    color:#111;
+
+    border-radius:8px;
+
+    cursor:pointer;
+
+    font-weight:bold;
+
+}
+
+.form-compra button:hover{
+
+    background:#ff962e;
+
+}
+
+
+/* ============================
+          TABELAS
+============================ */
+
+.tabela-container{
+
+    width:100%;
+
+    overflow:auto;
+
+}
+
+table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    min-width:1200px;
+
+}
+
+thead{
+
+    background:#ff7a00;
+
+}
+
+th{
+
+    padding:14px;
+
+    color:#111;
+
+    text-align:left;
+
+    font-size:13px;
+
+}
+
+td{
+
+    padding:13px;
+
+    border-bottom:1px solid #333;
+
+    font-size:13px;
+
+    color:#dddddd;
+
+}
+
+tbody tr{
+
+    transition:.20s;
+
+}
+
+tbody tr:hover{
+
+    background:#222;
+
+}
+
+
+/* ============================
+           STATUS
+============================ */
+
+.status{
+
+    display:inline-block;
+
+    padding:6px 12px;
+
+    border-radius:30px;
+
+    font-size:12px;
+
+    font-weight:bold;
+
+}
+
+.status.normal{
+
+    background:#173f23;
+
+    color:#9bffb2;
+
+}
+
+.status.atencao{
+
+    background:#5c4100;
+
+    color:#ffd868;
+
+}
+
+.status.alerta{
+
+    background:#5a1111;
+
+    color:#ffb2b2;
+
+}
+
+
+/* ============================
+          BOTÕES
+============================ */
+
+.btn-pequeno{
+
+    background:#ff7a00;
+
+    color:#111;
+
+    padding:8px 12px;
+
+    border-radius:8px;
+
+    text-decoration:none;
+
+    font-size:12px;
+
+    font-weight:bold;
+
+    margin-right:5px;
+
+    transition:.25s;
+
+}
+
+.btn-pequeno:hover{
+
+    background:#ff9c38;
+
+}
+
+.btn-excluir{
+
+    background:#4a0d0d;
+
+    color:#ffb4b4;
+
+    padding:8px 12px;
+
+    border-radius:8px;
+
+    text-decoration:none;
+
+    font-size:12px;
+
+    transition:.25s;
+
+}
+
+.btn-excluir:hover{
+
+    background:#7a1313;
+
+}
+
+
+/* ============================
+          ALERTAS
+============================ */
+
+.alerta{
+
+    background:#4d1111;
+
+    border-left:5px solid #ff3b3b;
+
+    color:#ffffff;
+
+    padding:15px;
+
+    border-radius:10px;
+
+    margin-bottom:20px;
+
+}
+
+
+/* ============================
+          TABELA VAZIA
+============================ */
+
+.vazio{
+
+    text-align:center;
+
+    color:#999;
+
+    padding:30px;
+
+}
+/* LOGIN */
+
+.login-body{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:radial-gradient(circle at top, #3a1c00, #0f0f0f 55%);
+}
+
+.login-card{
+    width:380px;
+    background:#181818;
+    padding:35px;
+    border-radius:18px;
+    box-shadow:0 0 35px rgba(255,122,0,.25);
+    border:1px solid rgba(255,122,0,.25);
+}
+
+.logo-fogo{
+    font-size:55px;
+    text-align:center;
+    margin-bottom:10px;
+}
+
+.login-card h1{
+    text-align:center;
+    color:#ff7a00;
+    margin-bottom:8px;
+}
+
+.login-card p{
+    text-align:center;
+    color:#bbb;
+    margin-bottom:25px;
+}
+
+.login-card label{
+    display:block;
+    margin-top:15px;
+    margin-bottom:6px;
+}
+
+.login-card input{
+    width:100%;
+    padding:13px;
+    border-radius:10px;
+    border:1px solid #333;
+    outline:none;
+    background:#0f0f0f;
+    color:#fff;
+}
+
+.login-card input:focus{
+    border-color:#ff7a00;
+}
+
+.login-card button{
+    width:100%;
+    margin-top:25px;
+    padding:13px;
+    border:none;
+    border-radius:10px;
+    background:#ff7a00;
+    color:#111;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.acesso{
+    display:block;
+    margin-top:18px;
+    font-size:12px;
+    color:#999;
+    text-align:center;
+}
+
+/* ACABAMENTO */
+
+.card:hover{
+    transform:translateY(-3px);
+    transition:.25s;
+    box-shadow:0 0 25px rgba(255,122,0,.15);
+}
+
+::-webkit-scrollbar{
+    width:10px;
+    height:10px;
+}
+
+::-webkit-scrollbar-track{
+    background:#111;
+}
+
+::-webkit-scrollbar-thumb{
+    background:#ff7a00;
+    border-radius:10px;
+}
+
+@media(max-width:1100px){
+    .cards{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .insumo-form,
+    .produto-form,
+    .ficha-form,
+    .venda-form,
+    .financeiro-form{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .sidebar{
+        position:relative;
+        width:220px;
+    }
+
+    .conteudo{
+        margin-left:0;
+    }
+}
+
+@media(max-width:700px){
+    .layout{
+        flex-direction:column;
+    }
+
+    .sidebar{
+        width:100%;
+        height:auto;
+        position:relative;
+    }
+
+    .conteudo{
+        margin-left:0;
+        padding:20px;
+    }
+
+    .cards{
+        grid-template-columns:1fr;
+    }
+
+    .insumo-form,
+    .produto-form,
+    .ficha-form,
+    .venda-form,
+    .financeiro-form{
+        grid-template-columns:1fr;
+    }
+}
+.alertas-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+}
+
+.alerta-card {
+    background: #111;
+    border-radius: 14px;
+    padding: 18px;
+    border: 1px solid #333;
+}
+
+.alerta-card h3 {
+    margin-bottom: 12px;
+    color: #ff7a00;
+    font-size: 16px;
+}
+
+.alerta-card p {
+    font-size: 13px;
+    color: #ddd;
+    margin-bottom: 8px;
+}
+
+.alerta-card.vermelho {
+    border-left: 5px solid #ff3b3b;
+}
+
+.alerta-card.laranja {
+    border-left: 5px solid #ff7a00;
+}
+
+.alerta-card.amarelo {
+    border-left: 5px solid #ffd166;
+}
+
+@media(max-width: 1000px) {
+    .alertas-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media(max-width: 700px) {
+    .alertas-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.btn-exportar {
+    display: inline-block;
+    background: #ff7a00;
+    color: #111;
+    padding: 13px 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.btn-exportar:hover {
+    background: #ff9a2f;
+}
+.config-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+}
+
+.config-card {
+    background: #111;
+    border: 1px solid #333;
+    border-left: 5px solid #ff7a00;
+    border-radius: 14px;
+    padding: 18px;
+}
+
+.config-card h3 {
+    color: #ff7a00;
+    margin-bottom: 10px;
+}
+
+.config-card p {
+    color: #ddd;
+}
+
+@media(max-width: 900px) {
+    .config-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media(max-width: 600px) {
+    .config-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+}
+
+.modal-conteudo {
+    background: #181818;
+    border: 1px solid #333;
+    border-radius: 16px;
+    padding: 25px;
+    width: 420px;
+    box-shadow: 0 0 25px rgba(255,122,0,.25);
+}
+
+.modal-conteudo h2 {
+    color: #ff7a00;
+    margin-bottom: 18px;
+}
+
+.btn-cancelar {
+    background: #333 !important;
+    color: #fff !important;
+}
