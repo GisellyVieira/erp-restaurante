@@ -125,9 +125,14 @@
                             {% endif %}
 
                             <td>
-                                <a class="btn-pequeno" href="{{ url_for('alterar_status_produto', id=p.id) }}">Alterar</a>
-                                <a class="btn-excluir" href="{{ url_for('excluir_produto', id=p.id) }}">Excluir</a>
-                            </td>
+    <button class="btn-pequeno" type="button" onclick="abrirEditarProduto('{{ p.id }}')">
+        ✏️ Editar
+    </button>
+
+    <a class="btn-excluir" href="{{ url_for('excluir_produto', id=p.id) }}" onclick="return confirm('Deseja realmente excluir este produto?')">
+        🗑️ Excluir
+    </a>
+</td>
                         </tr>
                         {% else %}
                         <tr>
@@ -142,6 +147,56 @@
     </main>
 
 </div>
+<div id="modalEditarProduto" class="modal">
+    <div class="modal-conteudo">
+        <h2>Editar Produto</h2>
+
+        <form id="formEditarProduto" method="POST" class="form-grid">
+            <input type="text" name="nome" id="edit_nome" placeholder="Nome" required>
+
+            <select name="categoria" id="edit_categoria" required>
+                <option value="Espetos">Espetos</option>
+                <option value="Bebidas">Bebidas</option>
+                <option value="Acompanhamentos">Acompanhamentos</option>
+                <option value="Combos">Combos</option>
+                <option value="Outros">Outros</option>
+            </select>
+
+            <input type="number" step="0.01" name="preco_venda" id="edit_preco" placeholder="Preço de venda" required>
+
+            <select name="tipo_produto" id="edit_tipo" required>
+                <option value="Produzido">Produto Produzido</option>
+                <option value="Revenda">Produto de Revenda</option>
+            </select>
+
+            <input type="number" step="0.01" name="custo_compra" id="edit_custo" placeholder="Custo de compra">
+            <input type="number" step="0.01" name="estoque_produto" id="edit_estoque" placeholder="Estoque">
+
+            <button type="submit">Salvar Alterações</button>
+            <button type="button" class="btn-cancelar" onclick="fecharEditarProduto()">Cancelar</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirEditarProduto(id) {
+    const linha = document.querySelector(`tr[data-id="${id}"]`);
+
+    document.getElementById("edit_nome").value = linha.dataset.nome;
+    document.getElementById("edit_categoria").value = linha.dataset.categoria;
+    document.getElementById("edit_preco").value = linha.dataset.preco;
+    document.getElementById("edit_tipo").value = linha.dataset.tipo;
+    document.getElementById("edit_custo").value = linha.dataset.custo;
+    document.getElementById("edit_estoque").value = linha.dataset.estoque;
+
+    document.getElementById("formEditarProduto").action = `/editar_produto/${id}`;
+    document.getElementById("modalEditarProduto").style.display = "flex";
+}
+
+function fecharEditarProduto() {
+    document.getElementById("modalEditarProduto").style.display = "none";
+}
+</script>
 
 </body>
 </html>

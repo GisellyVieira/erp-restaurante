@@ -629,6 +629,24 @@ def alterar_senha():
     flash("Senha alterada com sucesso!")
     return redirect(url_for("configuracoes"))
 
+@app.route("/editar_produto/<int:id>", methods=["POST"])
+def editar_produto(id):
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    produto = Produto.query.get_or_404(id)
+
+    produto.nome = request.form["nome"]
+    produto.categoria = request.form["categoria"]
+    produto.preco_venda = float(request.form["preco_venda"])
+    produto.tipo_produto = request.form["tipo_produto"]
+    produto.custo_compra = float(request.form.get("custo_compra") or 0)
+    produto.estoque_produto = float(request.form.get("estoque_produto") or 0)
+
+    db.session.commit()
+
+    flash("Produto atualizado com sucesso!")
+    return redirect(url_for("produtos"))
 
 @app.route("/logout")
 def logout():
