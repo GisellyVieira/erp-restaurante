@@ -93,7 +93,15 @@
 
                     <tbody>
                         {% for p in produtos %}
-                        <tr>
+<tr 
+    data-id="{{ p.id }}"
+    data-nome="{{ p.nome }}"
+    data-categoria="{{ p.categoria }}"
+    data-preco="{{ p.preco_venda }}"
+    data-tipo="{{ p.tipo_produto }}"
+    data-custo="{{ p.custo_compra }}"
+    data-estoque="{{ p.estoque_produto }}"
+>
                             <td>{{ p.nome }}</td>
                             <td>{{ p.tipo_produto }}</td>
                             <td>{{ p.categoria }}</td>

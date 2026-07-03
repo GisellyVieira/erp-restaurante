@@ -733,3 +733,32 @@ tbody tr:hover{
     background: #333 !important;
     color: #fff !important;
 }
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal-conteudo {
+    background: #181818;
+    border: 1px solid #333;
+    border-radius: 16px;
+    padding: 25px;
+    width: 420px;
+    max-width: 90%;
+    box-shadow: 0 0 25px rgba(255,122,0,.25);
+}
+
+.modal-conteudo h2 {
+    color: #ff7a00;
+    margin-bottom: 18px;
+}
+
+.btn-cancelar {
+    background: #333 !important;
+    color: #fff !important;
+}
