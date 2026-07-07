@@ -208,6 +208,25 @@ def excluir_insumo(id):
 
     return redirect(url_for("insumos"))
 
+    @app.route("/insumos/editar/<int:id>", methods=["GET", "POST"])
+
+    def editar_insumo(id):
+      if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    insumo = Insumo.query.get_or_404(id)
+
+    if request.method == "POST":
+        insumo.nome = request.form["nome"]
+        insumo.unidade = request.form["unidade"]
+        insumo.categoria = request.form.get("categoria", "Matéria-prima")
+
+        db.session.commit()
+
+        return redirect(url_for("insumos"))
+
+    return render_template("editar_insumo.html", insumo=insumo)
+
 
 @app.route("/produtos", methods=["GET", "POST"])
 def produtos():

@@ -929,3 +929,110 @@ tbody tr:hover{
     }
 
 }
+/* =====================================
+      TELA DE INSUMOS PROFISSIONAL
+===================================== */
+
+.insumos-topo{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.painel-destaque-insumos{
+    background:linear-gradient(135deg, #1d1d1d, #111);
+    border-left:5px solid #ff7a00;
+}
+
+.painel-destaque-insumos span{
+    color:#999;
+    font-size:13px;
+}
+
+.painel-destaque-insumos h2{
+    color:#ff7a00;
+    margin-top:6px;
+}
+
+.painel-cabecalho-insumos{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:20px;
+    margin-bottom:20px;
+}
+
+.painel-cabecalho-insumos p{
+    color:#999;
+    margin-top:5px;
+}
+
+.busca-insumo{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:#0f0f0f;
+    border:1px solid #333;
+    border-radius:12px;
+    padding:0 14px;
+    min-width:300px;
+}
+
+.busca-insumo input{
+    width:100%;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:#fff;
+    padding:13px 0;
+}
+
+.tabela-insumos small{
+    color:#888;
+}
+
+.form-compra-profissional{
+    display:grid;
+    grid-template-columns:1fr 1fr auto;
+    gap:8px;
+}
+
+.form-compra-profissional input{
+    width:130px;
+}
+
+.form-compra-profissional button{
+    width:auto;
+    padding:10px 14px;
+}
+
+.acoes-insumo{
+    display:flex;
+    gap:8px;
+}
+
+.btn-editar{
+    background:#2b2b2b;
+    color:#fff;
+    padding:8px 12px;
+    border-radius:8px;
+    text-decoration:none;
+    font-size:12px;
+    font-weight:bold;
+}
+
+.btn-editar:hover{
+    background:#444;
+}
+
+@media(max-width:900px){
+    .painel-cabecalho-insumos{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .busca-insumo{
+        width:100%;
+        min-width:0;
+    }
+}

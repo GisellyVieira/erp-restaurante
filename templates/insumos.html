@@ -30,12 +30,20 @@
 
     <main class="conteudo">
 
-        <header class="topo">
+        <header class="topo insumos-topo">
             <div>
                 <h1>Gestão de Insumos</h1>
-                <p>Cadastre matérias-primas e registre compras de forma simples.</p>
+                <p>Controle matérias-primas, compras, custos e níveis de estoque.</p>
             </div>
         </header>
+
+        <section class="painel painel-destaque-insumos">
+            <div>
+                <span>Módulo operacional</span>
+                <h2>Controle de Estoque</h2>
+                <p>Cadastre insumos, registre compras e acompanhe o status de reposição.</p>
+            </div>
+        </section>
 
         <section class="painel">
             <h2>Novo Insumo</h2>
@@ -61,14 +69,23 @@
         </section>
 
         <section class="painel">
-            <h2>Controle de Insumos</h2>
+            <div class="painel-cabecalho-insumos">
+                <div>
+                    <h2>Controle de Insumos</h2>
+                    <p>Use a busca para localizar rapidamente o item comprado.</p>
+                </div>
+
+                <div class="busca-insumo">
+                    <span>🔍</span>
+                    <input type="text" id="buscarInsumo" placeholder="Buscar insumo...">
+                </div>
+            </div>
 
             <div class="tabela-container">
-                <table>
+                <table class="tabela-insumos">
                     <thead>
                         <tr>
                             <th>Insumo</th>
-                            <th>Unidade</th>
                             <th>Estoque Atual</th>
                             <th>Custo Médio</th>
                             <th>Status</th>
@@ -80,9 +97,13 @@
                     <tbody>
                     {% for i in insumos %}
                         <tr>
-                            <td>{{ i.nome }}</td>
-                            <td>{{ i.unidade }}</td>
+                            <td>
+                                <strong>{{ i.nome }}</strong><br>
+                                <small>{{ i.unidade }}</small>
+                            </td>
+
                             <td>{{ "%.2f"|format(i.estoque_atual()) }} {{ i.unidade }}</td>
+
                             <td>R$ {{ "%.2f"|format(i.custo_medio_unitario()) }}</td>
 
                             <td>
@@ -98,20 +119,23 @@
                             </td>
 
                             <td>
-                                <form method="POST" action="{{ url_for('entrada_estoque', insumo_id=i.id) }}" class="form-compra">
-                                    <input type="number" step="0.01" name="quantidade" placeholder="Qtd" required>
-                                    <input type="number" step="0.01" name="valor_total" placeholder="Valor Pago" required>
-                                    <button type="submit">+</button>
+                                <form method="POST" action="{{ url_for('entrada_estoque', insumo_id=i.id) }}" class="form-compra form-compra-profissional">
+                                    <input type="number" step="0.01" name="quantidade" placeholder="Quantidade" required>
+                                    <input type="number" step="0.01" name="valor_total" placeholder="Valor pago" required>
+                                    <button type="submit">Registrar</button>
                                 </form>
                             </td>
 
                             <td>
-                                <a class="btn-excluir" href="{{ url_for('excluir_insumo', id=i.id) }}">Excluir</a>
+                                <div class="acoes-insumo">
+                                    <a class="btn-editar" href="{{ url_for('editar_insumo', id=i.id) }}">Editar</a>
+                                    <a class="btn-excluir" href="{{ url_for('excluir_insumo', id=i.id) }}">Excluir</a>
+                                </div>
                             </td>
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="7" class="vazio">Nenhum insumo cadastrado.</td>
+                            <td colspan="6" class="vazio">Nenhum insumo cadastrado.</td>
                         </tr>
                     {% endfor %}
                     </tbody>
@@ -122,6 +146,22 @@
     </main>
 
 </div>
+
+<script>
+const campoBusca = document.getElementById("buscarInsumo");
+
+if (campoBusca) {
+    campoBusca.addEventListener("keyup", function() {
+        const filtro = this.value.toLowerCase();
+        const linhas = document.querySelectorAll(".tabela-insumos tbody tr");
+
+        linhas.forEach(function(linha) {
+            const texto = linha.innerText.toLowerCase();
+            linha.style.display = texto.includes(filtro) ? "" : "none";
+        });
+    });
+}
+</script>
 
 </body>
 </html>
