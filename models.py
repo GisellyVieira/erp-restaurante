@@ -18,6 +18,7 @@ class Usuario(db.Model):
     def verificar_senha(self, senha):
         return check_password_hash(self.senha_hash, senha)
 
+
 class Insumo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
@@ -56,45 +57,36 @@ class Insumo(db.Model):
         return sum(m.quantidade for m in saidas) / 30
 
     def estoque_seguranca(self):
-         return self.consumo_medio_diario() * 0.10
-
+        return self.consumo_medio_diario() * 0.10
 
     def ponto_pedido(self):
         consumo = self.consumo_medio_diario()
-        lead_time_padrao = 2
-        return (consumo * lead_time_padrao) + self.estoque_seguranca()
+        tempo_reposicao = 2
+        return (consumo * tempo_reposicao) + self.estoque_seguranca()
+
     def estoque_minimo(self):
-    return self.ponto_pedido()
+        return self.ponto_pedido()
 
-def lote_economico(self):
-    D = self.saidas()
-    S = 20
-    H = self.custo_medio_unitario()
+    def lote_economico(self):
+        D = self.saidas()
+        S = 20
+        H = self.custo_medio_unitario()
 
-    if D <= 0 or H <= 0:
-        return 0
+        if D <= 0 or H <= 0:
+            return 0
 
-    return math.sqrt((2 * D * S) / H)
+        return math.sqrt((2 * D * S) / H)
 
-def estoque_maximo(self):
-    return self.estoque_minimo() + self.lote_economico()
+    def estoque_maximo(self):
+        return self.estoque_minimo() + self.lote_economico()
 
-def giro_estoque(self):
-    estoque_medio = (self.estoque_minimo() + self.estoque_maximo()) / 2
+    def giro_estoque(self):
+        estoque_medio = (self.estoque_minimo() + self.estoque_maximo()) / 2
 
-    if estoque_medio <= 0:
-        return 0
+        if estoque_medio <= 0:
+            return 0
 
-    return self.saidas() / estoque_medio
-
-def acao_sugerida(self):
-    if self.estoque_atual() <= 0:
-        return "Comprar agora"
-    if self.estoque_atual() <= self.estoque_minimo():
-        return "Comprar agora"
-    if self.estoque_atual() <= self.ponto_pedido():
-        return "Planejar compra"
-    return "Manter estoque"
+        return self.saidas() / estoque_medio
 
     def cobertura_estoque(self):
         consumo = self.consumo_medio_diario()
@@ -102,14 +94,26 @@ def acao_sugerida(self):
             return 0
         return self.estoque_atual() / consumo
 
+    def acao_sugerida(self):
+        if self.estoque_atual() <= 0:
+            return "Comprar agora"
+        if self.estoque_atual() <= self.estoque_minimo():
+            return "Comprar agora"
+        if self.estoque_atual() <= self.ponto_pedido():
+            return "Planejar compra"
+        return "Manter estoque"
+
     def status_estoque(self):
         if self.estoque_atual() <= 0:
             return "Sem estoque"
+        if self.estoque_atual() <= self.estoque_minimo():
+            return "Abaixo do mínimo"
         if self.estoque_atual() <= self.ponto_pedido():
             return "Ponto de pedido"
         if self.cobertura_estoque() <= 2:
             return "Cobertura baixa"
         return "Normal"
+
 
 class MovimentacaoEstoque(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -128,7 +132,8 @@ class MovimentacaoEstoque(db.Model):
         if self.quantidade <= 0:
             return 0
         return self.valor_total / self.quantidade
-    
+
+
 class Produto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)

@@ -454,6 +454,38 @@ def relatorios():
 
     total_vendido = sum(v.quantidade for v in vendas)
 
+    itens_abaixo_minimo = sum(
+        1 for i in insumos
+        if i.estoque_atual() <= i.estoque_minimo()
+    )
+
+    itens_ponto_pedido = sum(
+        1 for i in insumos
+        if i.estoque_atual() > i.estoque_minimo()
+        and i.estoque_atual() <= i.ponto_pedido()
+    )
+
+    coberturas = [
+        i.cobertura_estoque() for i in insumos
+        if i.cobertura_estoque() > 0
+    ]
+
+    cobertura_media = sum(coberturas) / len(coberturas) if coberturas else 0
+
+    giros = [
+        i.giro_estoque() for i in insumos
+        if i.giro_estoque() > 0
+    ]
+
+    giro_medio = sum(giros) / len(giros) if giros else 0
+
+    lotes = [
+        i.lote_economico() for i in insumos
+        if i.lote_economico() > 0
+    ]
+
+    lote_economico_medio = sum(lotes) / len(lotes) if lotes else 0
+
     ranking_produtos = {}
 
     for venda in vendas:
@@ -492,7 +524,12 @@ def relatorios():
         lucro_operacional=lucro_operacional,
         valor_estoque=valor_estoque,
         total_vendido=total_vendido,
-        ranking_produtos=ranking_produtos
+        ranking_produtos=ranking_produtos,
+        itens_abaixo_minimo=itens_abaixo_minimo,
+        itens_ponto_pedido=itens_ponto_pedido,
+        cobertura_media=cobertura_media,
+        giro_medio=giro_medio,
+        lote_economico_medio=lote_economico_medio
     )
 
 @app.route("/exportar_caixa")

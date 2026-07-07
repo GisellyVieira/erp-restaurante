@@ -30,106 +30,145 @@
 
     <main class="conteudo">
 
-        <header class="topo">
+        <header class="topo relatorio-topo">
             <div>
                 <h1>Relatórios Gerenciais</h1>
-                <p>Indicadores consolidados para análise de estoque, vendas e financeiro.</p>
+                <p>Visão simples para acompanhar estoque, vendas e desempenho financeiro.</p>
             </div>
-        </header>
-        <section class="painel">
-    <a class="btn-exportar" href="{{ url_for('exportar_caixa') }}">
-        📥 Exportar Fechamento de Caixa
-    </a>
-</section>
 
-        <section class="cards">
+            <a class="btn-exportar" href="{{ url_for('exportar_caixa') }}">
+                📥 Exportar Caixa
+            </a>
+        </header>
+
+        <section class="relatorio-destaque">
+            <div>
+                <span>Resumo do estoque</span>
+                <h2>Sistema Min-Max</h2>
+                <p>Indicadores automáticos para apoiar decisões de compra e reposição.</p>
+            </div>
+
+            <div class="destaque-status">
+                {% if itens_abaixo_minimo > 0 %}
+                    <span class="status alerta">{{ itens_abaixo_minimo }} item(ns) críticos</span>
+                {% else %}
+                    <span class="status normal">Estoque controlado</span>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="cards cards-relatorio">
+            <div class="card card-alerta">
+                <span>Abaixo do mínimo</span>
+                <h2>{{ itens_abaixo_minimo }}</h2>
+                <p>Itens que precisam de atenção imediata.</p>
+            </div>
+
+            <div class="card card-atencao">
+                <span>Ponto de pedido</span>
+                <h2>{{ itens_ponto_pedido }}</h2>
+                <p>Itens próximos da reposição.</p>
+            </div>
+
             <div class="card">
-                <span>Receita Total</span>
+                <span>Cobertura média</span>
+                <h2>{{ "%.1f"|format(cobertura_media) }} dias</h2>
+                <p>Tempo médio estimado de estoque.</p>
+            </div>
+
+            <div class="card">
+                <span>Giro médio</span>
+                <h2>{{ "%.2f"|format(giro_medio) }}x</h2>
+                <p>Rotatividade média dos insumos.</p>
+            </div>
+        </section>
+
+        <section class="cards cards-relatorio">
+            <div class="card">
+                <span>Receita total</span>
                 <h2>R$ {{ "%.2f"|format(receita_total) }}</h2>
             </div>
 
             <div class="card">
-                <span>Custo da Mercadoria Vendida</span>
-                <h2>R$ {{ "%.2f"|format(cmv_total) }}</h2>
-            </div>
-
-            <div class="card">
-                <span>Margem de Contribuição</span>
+                <span>Margem de contribuição</span>
                 <h2>R$ {{ "%.2f"|format(margem_total) }}</h2>
             </div>
 
             <div class="card">
-                <span>Lucro Operacional Estimado</span>
+                <span>Lucro operacional</span>
                 <h2>R$ {{ "%.2f"|format(lucro_operacional) }}</h2>
             </div>
-        </section>
-
-        <section class="cards">
-            <div class="card">
-                <span>% Margem de Contribuição</span>
-                <h2>{{ "%.1f"|format(margem_percentual) }}%</h2>
-            </div>
 
             <div class="card">
-                <span>Despesas Operacionais</span>
-                <h2>R$ {{ "%.2f"|format(despesas_operacionais) }}</h2>
-            </div>
-
-            <div class="card">
-                <span>Valor em Estoque</span>
+                <span>Valor em estoque</span>
                 <h2>R$ {{ "%.2f"|format(valor_estoque) }}</h2>
-            </div>
-
-            <div class="card">
-                <span>Quantidade Vendida</span>
-                <h2>{{ total_vendido }}</h2>
             </div>
         </section>
 
         <section class="painel">
-            <h2>Relatório de Estoque</h2>
+            <div class="painel-titulo">
+                <div>
+                    <h2>Análise Gerencial de Estoque</h2>
+                    <p>Resumo prático para compra, reposição e acompanhamento dos insumos.</p>
+                </div>
+            </div>
 
             <div class="tabela-container">
-                <table>
+                <table class="tabela-relatorio">
                     <thead>
                         <tr>
                             <th>Insumo</th>
-                            <th>Unidade</th>
-                            <th>Estoque Atual</th>
-                            <th>Custo Médio Unitário</th>
-                            <th>Valor em Estoque</th>
-                            <th>Consumo Médio Diário</th>
-                            <th>Cobertura de Estoque</th>
-                            <th>Estoque de Segurança</th>
-                            <th>Ponto de Pedido</th>
+                            <th>Atual</th>
+                            <th>Mínimo</th>
+                            <th>Máximo</th>
+                            <th>PP</th>
+                            <th>Cobertura</th>
+                            <th>Giro</th>
                             <th>Status</th>
+                            <th>Ação sugerida</th>
                         </tr>
                     </thead>
 
                     <tbody>
                         {% for i in insumos %}
                         <tr>
-                            <td>{{ i.nome }}</td>
-                            <td>{{ i.unidade }}</td>
-                            <td>{{ "%.2f"|format(i.estoque_atual()) }} {{ i.unidade }}</td>
-                            <td>R$ {{ "%.2f"|format(i.custo_medio_unitario()) }}</td>
-                            <td>R$ {{ "%.2f"|format(i.estoque_atual() * i.custo_medio_unitario()) }}</td>
-                            <td>{{ "%.2f"|format(i.consumo_medio_diario()) }} {{ i.unidade }}/dia</td>
-                            <td>{{ "%.1f"|format(i.cobertura_estoque()) }} dias</td>
-                            <td>{{ "%.2f"|format(i.estoque_seguranca()) }} {{ i.unidade }}</td>
-                            <td>{{ "%.2f"|format(i.ponto_pedido()) }} {{ i.unidade }}</td>
+                            <td>
+                                <strong>{{ i.nome }}</strong><br>
+                                <small>{{ i.unidade }}</small>
+                            </td>
 
-                            {% if i.status_estoque() == "Normal" %}
-                                <td><span class="status normal">Normal</span></td>
-                            {% elif i.status_estoque() == "Cobertura baixa" %}
-                                <td><span class="status atencao">Cobertura baixa</span></td>
-                            {% else %}
-                                <td><span class="status alerta">{{ i.status_estoque() }}</span></td>
-                            {% endif %}
+                            <td>{{ "%.2f"|format(i.estoque_atual()) }}</td>
+                            <td>{{ "%.2f"|format(i.estoque_minimo()) }}</td>
+                            <td>{{ "%.2f"|format(i.estoque_maximo()) }}</td>
+                            <td>{{ "%.2f"|format(i.ponto_pedido()) }}</td>
+                            <td>{{ "%.1f"|format(i.cobertura_estoque()) }} dias</td>
+                            <td>{{ "%.2f"|format(i.giro_estoque()) }}x</td>
+
+                            <td>
+                                {% if i.status_estoque() == "Normal" %}
+                                    <span class="status normal">Normal</span>
+                                {% elif i.status_estoque() == "Cobertura baixa" %}
+                                    <span class="status atencao">Cobertura baixa</span>
+                                {% elif i.status_estoque() == "Ponto de pedido" %}
+                                    <span class="status atencao">Ponto de pedido</span>
+                                {% else %}
+                                    <span class="status alerta">{{ i.status_estoque() }}</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if i.acao_sugerida() == "Comprar agora" %}
+                                    <span class="acao comprar">Comprar agora</span>
+                                {% elif i.acao_sugerida() == "Planejar compra" %}
+                                    <span class="acao planejar">Planejar compra</span>
+                                {% else %}
+                                    <span class="acao manter">Manter estoque</span>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="10" class="vazio">Nenhum insumo cadastrado.</td>
+                            <td colspan="9" class="vazio">Nenhum insumo cadastrado.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -138,7 +177,12 @@
         </section>
 
         <section class="painel">
-            <h2>Relatório de Produtos</h2>
+            <div class="painel-titulo">
+                <div>
+                    <h2>Produtos e Margem</h2>
+                    <p>Acompanhamento dos custos, preços e margem de contribuição.</p>
+                </div>
+            </div>
 
             <div class="tabela-container">
                 <table>
@@ -146,9 +190,9 @@
                         <tr>
                             <th>Produto</th>
                             <th>Categoria</th>
-                            <th>Preço de Venda</th>
-                            <th>Custo da Matéria-Prima</th>
-                            <th>Margem de Contribuição</th>
+                            <th>Preço</th>
+                            <th>Custo</th>
+                            <th>Margem</th>
                             <th>% Margem</th>
                             <th>Status</th>
                         </tr>
@@ -181,17 +225,22 @@
         </section>
 
         <section class="painel">
-            <h2>Ranking de Produtos Vendidos</h2>
+            <div class="painel-titulo">
+                <div>
+                    <h2>Ranking de Produtos Vendidos</h2>
+                    <p>Produtos com maior saída no período registrado.</p>
+                </div>
+            </div>
 
             <div class="tabela-container">
                 <table>
                     <thead>
                         <tr>
                             <th>Produto</th>
-                            <th>Quantidade Vendida</th>
+                            <th>Quantidade</th>
                             <th>Receita</th>
                             <th>CMV</th>
-                            <th>Margem de Contribuição</th>
+                            <th>Margem</th>
                         </tr>
                     </thead>
 
