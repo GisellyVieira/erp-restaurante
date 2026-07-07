@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Insumo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="layout">
+
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="logo-menu">🔥</div>
+            <h2>ERP Restaurante</h2>
+        </div>
+
+        <nav>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a class="ativo" href="{{ url_for('insumos') }}">Insumos</a>
+            <a href="{{ url_for('produtos') }}">Produtos</a>
+            <a href="{{ url_for('ficha_tecnica') }}">Ficha Técnica</a>
+            <a href="{{ url_for('vendas') }}">Vendas</a>
+            <a href="{{ url_for('financeiro') }}">Caixa</a>
+            <a href="{{ url_for('relatorios') }}">Relatórios</a>
+            <a href="{{ url_for('configuracoes') }}">Configurações</a>
+            <a href="{{ url_for('logout') }}">Sair</a>
+        </nav>
+    </aside>
+
+    <main class="conteudo">
+
+        <header class="topo">
+            <h1>Editar Insumo</h1>
+            <p>Atualize as informações do item cadastrado.</p>
+        </header>
+
+        <section class="painel">
+
+            <h2>{{ insumo.nome }}</h2>
+
+            <form method="POST" class="form-grid insumo-form">
+
+                <input
+                    type="text"
+                    name="nome"
+                    value="{{ insumo.nome }}"
+                    required
+                >
+
+                <select name="unidade" required>
+
+                    <option value="kg" {% if insumo.unidade == "kg" %}selected{% endif %}>kg</option>
+
+                    <option value="g" {% if insumo.unidade == "g" %}selected{% endif %}>g</option>
+
+                    <option value="L" {% if insumo.unidade == "L" %}selected{% endif %}>Litro</option>
+
+                    <option value="ml" {% if insumo.unidade == "ml" %}selected{% endif %}>ml</option>
+
+                    <option value="un" {% if insumo.unidade == "un" %}selected{% endif %}>Unidade</option>
+
+                    <option value="pacote" {% if insumo.unidade == "pacote" %}selected{% endif %}>Pacote</option>
+
+                    <option value="caixa" {% if insumo.unidade == "caixa" %}selected{% endif %}>Caixa</option>
+
+                </select>
+
+                <button type="submit">
+                    Salvar Alterações
+                </button>
+
+            </form>
+
+            <br>
+
+            <a class="btn-pequeno" href="{{ url_for('insumos') }}">
+                Voltar
+            </a>
+
+        </section>
+
+    </main>
+
+</div>
+
+</body>
+</html>
