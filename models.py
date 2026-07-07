@@ -56,20 +56,45 @@ class Insumo(db.Model):
         return sum(m.quantidade for m in saidas) / 30
 
     def estoque_seguranca(self):
-        consumo = self.consumo_medio_diario()
-        if consumo <= 0:
-            return 0
+         return self.consumo_medio_diario() * 0.10
 
-        z = 1.65
-        desvio_estimado = consumo * 0.30
-        lead_time_padrao = 2
-
-        return z * desvio_estimado * math.sqrt(lead_time_padrao)
 
     def ponto_pedido(self):
         consumo = self.consumo_medio_diario()
         lead_time_padrao = 2
         return (consumo * lead_time_padrao) + self.estoque_seguranca()
+    def estoque_minimo(self):
+    return self.ponto_pedido()
+
+def lote_economico(self):
+    D = self.saidas()
+    S = 20
+    H = self.custo_medio_unitario()
+
+    if D <= 0 or H <= 0:
+        return 0
+
+    return math.sqrt((2 * D * S) / H)
+
+def estoque_maximo(self):
+    return self.estoque_minimo() + self.lote_economico()
+
+def giro_estoque(self):
+    estoque_medio = (self.estoque_minimo() + self.estoque_maximo()) / 2
+
+    if estoque_medio <= 0:
+        return 0
+
+    return self.saidas() / estoque_medio
+
+def acao_sugerida(self):
+    if self.estoque_atual() <= 0:
+        return "Comprar agora"
+    if self.estoque_atual() <= self.estoque_minimo():
+        return "Comprar agora"
+    if self.estoque_atual() <= self.ponto_pedido():
+        return "Planejar compra"
+    return "Manter estoque"
 
     def cobertura_estoque(self):
         consumo = self.consumo_medio_diario()
