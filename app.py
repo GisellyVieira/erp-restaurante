@@ -167,6 +167,7 @@ def insumos():
     lista = Insumo.query.order_by(Insumo.nome).all()
     return render_template("insumos.html", insumos=lista)
 
+
 @app.route("/entrada_estoque/<int:insumo_id>", methods=["POST"])
 def entrada_estoque(insumo_id):
     if "usuario_id" not in session:
@@ -197,21 +198,9 @@ def entrada_estoque(insumo_id):
     return redirect(url_for("insumos"))
 
 
-@app.route("/excluir_insumo/<int:id>")
-def excluir_insumo(id):
+@app.route("/insumos/editar/<int:id>", methods=["GET", "POST"])
+def editar_insumo(id):
     if "usuario_id" not in session:
-        return redirect(url_for("login"))
-
-    insumo = Insumo.query.get_or_404(id)
-    db.session.delete(insumo)
-    db.session.commit()
-
-    return redirect(url_for("insumos"))
-
-    @app.route("/insumos/editar/<int:id>", methods=["GET", "POST"])
-
-    def editar_insumo(id):
-      if "usuario_id" not in session:
         return redirect(url_for("login"))
 
     insumo = Insumo.query.get_or_404(id)
@@ -227,6 +216,17 @@ def excluir_insumo(id):
 
     return render_template("editar_insumo.html", insumo=insumo)
 
+
+@app.route("/excluir_insumo/<int:id>")
+def excluir_insumo(id):
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    insumo = Insumo.query.get_or_404(id)
+    db.session.delete(insumo)
+    db.session.commit()
+
+    return redirect(url_for("insumos"))
 
 @app.route("/produtos", methods=["GET", "POST"])
 def produtos():
