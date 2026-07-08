@@ -26,23 +26,37 @@
     <main class="conteudo">
         <header class="topo">
             <h1>Ficha Técnica</h1>
-            <p>Composição dos produtos e cálculo do custo da matéria-prima.</p>
+            <p>Composição dos produtos, preparos internos e cálculo do custo da matéria-prima.</p>
         </header>
 
         <section class="painel">
-            <h2>Adicionar Insumo ao Produto</h2>
+            <h2>Adicionar Item à Ficha Técnica</h2>
+
             <form method="POST" class="form-grid ficha-form">
                 <select name="produto_id" required>
-                    <option value="">Produto</option>
+                    <option value="">Produto final</option>
                     {% for p in produtos %}
                         <option value="{{ p.id }}">{{ p.nome }}</option>
                     {% endfor %}
                 </select>
 
-                <select name="insumo_id" required>
+                <select name="tipo_item" id="tipo_item" required>
+                    <option value="">Tipo de item</option>
+                    <option value="insumo">Insumo do estoque</option>
+                    <option value="produto">Preparo interno / produto base</option>
+                </select>
+
+                <select name="insumo_id" id="campo_insumo">
                     <option value="">Insumo</option>
                     {% for i in insumos %}
                         <option value="{{ i.id }}">{{ i.nome }} - estoque em {{ i.unidade }}</option>
+                    {% endfor %}
+                </select>
+
+                <select name="produto_base_id" id="campo_produto_base" style="display:none;">
+                    <option value="">Preparo interno / produto base</option>
+                    {% for p in produtos_base %}
+                        <option value="{{ p.id }}">{{ p.nome }}</option>
                     {% endfor %}
                 </select>
 
@@ -65,12 +79,14 @@
 
         <section class="painel">
             <h2>Itens da Ficha Técnica</h2>
+
             <div class="tabela-container">
                 <table>
                     <thead>
                         <tr>
                             <th>Produto</th>
-                            <th>Insumo</th>
+                            <th>Tipo</th>
+                            <th>Item</th>
                             <th>Quantidade Usada</th>
                             <th>Quantidade Convertida</th>
                             <th>Custo Médio Unitário</th>
@@ -78,19 +94,35 @@
                             <th>Ação</th>
                         </tr>
                     </thead>
+
                     <tbody>
                         {% for item in itens %}
                         <tr>
                             <td>{{ item.produto.nome }}</td>
-                            <td>{{ item.insumo.nome }}</td>
+                            <td>{{ item.tipo_item() }}</td>
+                            <td>{{ item.nome_item() }}</td>
                             <td>{{ "%.3f"|format(item.quantidade) }} {{ item.unidade_utilizada }}</td>
-                            <td>{{ "%.3f"|format(item.quantidade_convertida_para_estoque()) }} {{ item.insumo.unidade }}</td>
-                            <td>R$ {{ "%.2f"|format(item.insumo.custo_medio_unitario()) }}</td>
+
+                            {% if item.insumo %}
+                                <td>{{ "%.3f"|format(item.quantidade_convertida_para_estoque()) }} {{ item.insumo.unidade }}</td>
+                                <td>R$ {{ "%.2f"|format(item.insumo.custo_medio_unitario()) }}</td>
+                            {% else %}
+                                <td>{{ "%.3f"|format(item.quantidade) }} {{ item.unidade_utilizada }}</td>
+                                <td>R$ {{ "%.2f"|format(item.produto_base.custo_materia_prima()) }}</td>
+                            {% endif %}
+
                             <td>R$ {{ "%.2f"|format(item.custo_item()) }}</td>
-                            <td><a class="btn-excluir" href="{{ url_for('excluir_item_ficha', id=item.id) }}">Excluir</a></td>
+
+                            <td>
+                                <a class="btn-excluir" href="{{ url_for('excluir_item_ficha', id=item.id) }}">
+                                    Excluir
+                                </a>
+                            </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="7" class="vazio">Nenhum item cadastrado na ficha técnica.</td></tr>
+                        <tr>
+                            <td colspan="8" class="vazio">Nenhum item cadastrado na ficha técnica.</td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -98,6 +130,30 @@
         </section>
     </main>
 </div>
+
+<script>
+const tipoItem = document.getElementById("tipo_item");
+const campoInsumo = document.getElementById("campo_insumo");
+const campoProdutoBase = document.getElementById("campo_produto_base");
+
+tipoItem.addEventListener("change", function() {
+    if (this.value === "insumo") {
+        campoInsumo.style.display = "block";
+        campoProdutoBase.style.display = "none";
+        campoInsumo.required = true;
+        campoProdutoBase.required = false;
+        campoProdutoBase.value = "";
+    }
+
+    if (this.value === "produto") {
+        campoInsumo.style.display = "none";
+        campoProdutoBase.style.display = "block";
+        campoInsumo.required = false;
+        campoProdutoBase.required = true;
+        campoInsumo.value = "";
+    }
+});
+</script>
 
 </body>
 </html>

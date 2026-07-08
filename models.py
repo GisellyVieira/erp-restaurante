@@ -196,14 +196,41 @@ class FichaTecnica(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     produto_id = db.Column(db.Integer, db.ForeignKey("produto.id"), nullable=False)
-    insumo_id = db.Column(db.Integer, db.ForeignKey("insumo.id"), nullable=False)
+
+    # Pode ser insumo comum
+    insumo_id = db.Column(db.Integer, db.ForeignKey("insumo.id"), nullable=True)
+
+    # Ou pode ser um produto/preparo interno usado como base
+    produto_base_id = db.Column(db.Integer, db.ForeignKey("produto.id"), nullable=True)
 
     quantidade = db.Column(db.Float, nullable=False)
     unidade_utilizada = db.Column(db.String(20), nullable=False)
 
     insumo = db.relationship("Insumo")
 
+    produto_base = db.relationship(
+        "Produto",
+        foreign_keys=[produto_base_id]
+    )
+
+    def nome_item(self):
+        if self.insumo:
+            return self.insumo.nome
+        if self.produto_base:
+            return self.produto_base.nome
+        return "Item não informado"
+
+    def tipo_item(self):
+        if self.insumo:
+            return "Insumo"
+        if self.produto_base:
+            return "Preparo interno"
+        return "-"
+
     def quantidade_convertida_para_estoque(self):
+        if not self.insumo:
+            return self.quantidade
+
         unidade_estoque = self.insumo.unidade
         unidade_usada = self.unidade_utilizada
 
@@ -222,10 +249,15 @@ class FichaTecnica(db.Model):
         return self.quantidade
 
     def custo_item(self):
-        quantidade_convertida = self.quantidade_convertida_para_estoque()
-        custo_unitario = self.insumo.custo_medio_unitario()
-        return quantidade_convertida * custo_unitario
+        if self.insumo:
+            quantidade_convertida = self.quantidade_convertida_para_estoque()
+            custo_unitario = self.insumo.custo_medio_unitario()
+            return quantidade_convertida * custo_unitario
 
+        if self.produto_base:
+            return self.quantidade * self.produto_base.custo_materia_prima()
+
+        return 0
 
 class Venda(db.Model):
     id = db.Column(db.Integer, primary_key=True)

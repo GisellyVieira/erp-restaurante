@@ -284,12 +284,20 @@ def ficha_tecnica():
         return redirect(url_for("login"))
 
     if request.method == "POST":
+
+        tipo_item = request.form["tipo_item"]
+
         item = FichaTecnica(
             produto_id=int(request.form["produto_id"]),
-            insumo_id=int(request.form["insumo_id"]),
             quantidade=float(request.form["quantidade"]),
             unidade_utilizada=request.form["unidade_utilizada"]
         )
+
+        if tipo_item == "insumo":
+            item.insumo_id = int(request.form["insumo_id"])
+
+        elif tipo_item == "produto":
+            item.produto_base_id = int(request.form["produto_base_id"])
 
         db.session.add(item)
         db.session.commit()
@@ -297,12 +305,14 @@ def ficha_tecnica():
         return redirect(url_for("ficha_tecnica"))
 
     produtos = Produto.query.order_by(Produto.nome).all()
+    produtos_base = Produto.query.order_by(Produto.nome).all()
     insumos = Insumo.query.order_by(Insumo.nome).all()
     itens = FichaTecnica.query.all()
 
     return render_template(
         "ficha_tecnica.html",
         produtos=produtos,
+        produtos_base=produtos_base,
         insumos=insumos,
         itens=itens
     )
@@ -318,7 +328,6 @@ def excluir_item_ficha(id):
     db.session.commit()
 
     return redirect(url_for("ficha_tecnica"))
-
 
 @app.route("/vendas", methods=["GET", "POST"])
 def vendas():
