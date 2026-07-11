@@ -284,30 +284,73 @@ def ficha_tecnica():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-
+        produto_id = int(request.form["produto_id"])
         tipo_item = request.form["tipo_item"]
+        quantidade = float(request.form["quantidade"])
+        unidade_utilizada = request.form["unidade_utilizada"]
 
         item = FichaTecnica(
-            produto_id=int(request.form["produto_id"]),
-            quantidade=float(request.form["quantidade"]),
-            unidade_utilizada=request.form["unidade_utilizada"]
+            produto_id=produto_id,
+            quantidade=quantidade,
+            unidade_utilizada=unidade_utilizada
         )
 
         if tipo_item == "insumo":
-            item.insumo_id = int(request.form["insumo_id"])
+            insumo_id = request.form.get("insumo_id")
+
+            if not insumo_id:
+                flash("Selecione um insumo.")
+                return redirect(url_for("ficha_tecnica"))
+
+            item.insumo_id = int(insumo_id)
 
         elif tipo_item == "produto":
-            item.produto_base_id = int(request.form["produto_base_id"])
+            produto_base_id = request.form.get("produto_base_id")
+
+            if not produto_base_id:
+                flash("Selecione um produto base.")
+                return redirect(url_for("ficha_tecnica"))
+
+            produto_base_id = int(produto_base_id)
+
+            if produto_base_id == produto_id:
+                flash("Um produto não pode ser usado como base dele mesmo.")
+                return redirect(url_for("ficha_tecnica"))
+
+            produto_base = Produto.query.get_or_404(produto_base_id)
+
+            if produto_base.tipo_produto != "Produzido":
+                flash("Somente produtos produzidos podem ser usados como base.")
+                return redirect(url_for("ficha_tecnica"))
+
+            item.produto_base_id = produto_base_id
+
+        else:
+            flash("Selecione o tipo de item.")
+            return redirect(url_for("ficha_tecnica"))
 
         db.session.add(item)
         db.session.commit()
 
+        flash("Item adicionado à ficha técnica com sucesso!")
         return redirect(url_for("ficha_tecnica"))
 
-    produtos = Produto.query.order_by(Produto.nome).all()
-    produtos_base = Produto.query.order_by(Produto.nome).all()
-    insumos = Insumo.query.order_by(Insumo.nome).all()
-    itens = FichaTecnica.query.all()
+    produtos = Produto.query.filter_by(
+        ativo=True
+    ).order_by(Produto.nome).all()
+
+    produtos_base = Produto.query.filter_by(
+        tipo_produto="Produzido",
+        ativo=True
+    ).order_by(Produto.nome).all()
+
+    insumos = Insumo.query.order_by(
+        Insumo.nome
+    ).all()
+
+    itens = FichaTecnica.query.order_by(
+        FichaTecnica.produto_id
+    ).all()
 
     return render_template(
         "ficha_tecnica.html",
@@ -324,8 +367,11 @@ def excluir_item_ficha(id):
         return redirect(url_for("login"))
 
     item = FichaTecnica.query.get_or_404(id)
+
     db.session.delete(item)
     db.session.commit()
+
+    flash("Item removido da ficha técnica.")
 
     return redirect(url_for("ficha_tecnica"))
 
