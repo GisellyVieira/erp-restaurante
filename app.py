@@ -258,12 +258,14 @@ def produtos():
 
     if request.method == "POST":
         tipo_produto = request.form["tipo_produto"]
+        finalidade = request.form.get("finalidade", "Venda")
 
         novo = Produto(
             nome=request.form["nome"],
             categoria=request.form["categoria"],
-            preco_venda=float(request.form["preco_venda"]),
+            preco_venda=float(request.form.get("preco_venda") or 0),
             tipo_produto=tipo_produto,
+            finalidade=finalidade,
             custo_compra=float(request.form.get("custo_compra") or 0),
             estoque_produto=float(request.form.get("estoque_produto") or 0),
             ativo=True
@@ -272,10 +274,37 @@ def produtos():
         db.session.add(novo)
         db.session.commit()
 
+        flash("Produto cadastrado com sucesso!")
         return redirect(url_for("produtos"))
 
     lista = Produto.query.order_by(Produto.nome).all()
-    return render_template("produtos.html", produtos=lista)
+
+    return render_template(
+        "produtos.html",
+        produtos=lista
+    )
+
+
+@app.route("/editar_produto/<int:id>", methods=["POST"])
+def editar_produto(id):
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    produto = Produto.query.get_or_404(id)
+
+    produto.nome = request.form["nome"]
+    produto.categoria = request.form["categoria"]
+    produto.preco_venda = float(request.form.get("preco_venda") or 0)
+    produto.tipo_produto = request.form["tipo_produto"]
+    produto.finalidade = request.form.get("finalidade", "Venda")
+    produto.custo_compra = float(request.form.get("custo_compra") or 0)
+    produto.estoque_produto = float(request.form.get("estoque_produto") or 0)
+
+    db.session.commit()
+
+    flash("Produto atualizado com sucesso!")
+    return redirect(url_for("produtos"))
+
 
 @app.route("/excluir_produto/<int:id>")
 def excluir_produto(id):
@@ -283,9 +312,15 @@ def excluir_produto(id):
         return redirect(url_for("login"))
 
     produto = Produto.query.get_or_404(id)
+
+    if produto.fichas_como_base:
+        flash("Este produto não pode ser excluído porque está sendo usado como preparo interno.")
+        return redirect(url_for("produtos"))
+
     db.session.delete(produto)
     db.session.commit()
 
+    flash("Produto excluído com sucesso!")
     return redirect(url_for("produtos"))
 
 
@@ -296,10 +331,10 @@ def alterar_status_produto(id):
 
     produto = Produto.query.get_or_404(id)
     produto.ativo = not produto.ativo
+
     db.session.commit()
 
     return redirect(url_for("produtos"))
-
 
 @app.route("/ficha_tecnica", methods=["GET", "POST"])
 def ficha_tecnica():
@@ -363,8 +398,10 @@ def ficha_tecnica():
     ).order_by(Produto.nome).all()
 
     produtos_base = Produto.query.filter_by(
-        tipo_produto="Produzido",
-        ativo=True
+    tipo_produto="Produzido",
+    finalidade="Preparo Interno",
+    ativo=True
+
     ).order_by(Produto.nome).all()
 
     insumos = Insumo.query.order_by(

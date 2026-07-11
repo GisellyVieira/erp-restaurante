@@ -208,9 +208,18 @@ class Produto(db.Model):
     ativo = db.Column(db.Boolean, default=True)
 
     tipo_produto = db.Column(
-        db.String(30),
-        default="Produzido"
-    )
+    db.String(30),
+    default="Produzido"
+)
+
+    finalidade = db.Column(
+    db.String(30),
+    default="Venda",
+    nullable=False
+)
+
+    custo_compra = db.Column(db.Float, default=0)
+    estoque_produto = db.Column(db.Float, default=0)
 
     custo_compra = db.Column(db.Float, default=0)
     estoque_produto = db.Column(db.Float, default=0)
