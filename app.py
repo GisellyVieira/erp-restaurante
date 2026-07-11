@@ -16,6 +16,7 @@ import io
 from datetime import datetime
 import os
 import shutil
+from sqlalchemy import inspect, text
 
 
 app = Flask(__name__)
@@ -35,16 +36,34 @@ db.init_app(app)
 
 
 def criar_banco():
-    with app.app_context():
-        db.create_all()
+    db.create_all()
 
-        admin = Usuario.query.filter_by(usuario="admin").first()
+    inspector = inspect(db.engine)
 
-        if not admin:
-            admin = Usuario(nome="Gerente", usuario="admin")
-            admin.set_senha("123456")
-            db.session.add(admin)
-            db.session.commit()
+    # Verifica se a tabela da ficha técnica já existe
+    tabelas = inspector.get_table_names()
+
+    if "ficha_tecnica" not in tabelas:
+        return
+
+    # Obtém as colunas atuais da tabela
+    colunas = [
+        coluna["name"]
+        for coluna in inspector.get_columns("ficha_tecnica")
+    ]
+
+    # Adiciona produto_base_id sem apagar os dados existentes
+    if "produto_base_id" not in colunas:
+        with db.engine.begin() as conexao:
+            conexao.execute(
+                text(
+                    "ALTER TABLE ficha_tecnica "
+                    "ADD COLUMN produto_base_id INTEGER "
+                    "REFERENCES produto(id)"
+                )
+            )
+
+        print("Coluna produto_base_id criada com sucesso.")
 
 
 @app.route("/", methods=["GET", "POST"])
