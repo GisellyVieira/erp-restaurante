@@ -1,4 +1,16 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import (
+    Flask,
+    flash,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    session,
+    url_for,
+)
+from openpyxl import Workbook
+from sqlalchemy import inspect, text
+
 from models import (
     db,
     Usuario,
@@ -7,76 +19,200 @@ from models import (
     Produto,
     FichaTecnica,
     Venda,
-    Financeiro
+    Financeiro,
 )
 
-from flask import send_file
-from openpyxl import Workbook
 import io
-from datetime import datetime
 import os
 import shutil
-from sqlalchemy import inspect, text
+from datetime import datetime
 
 
 app = Flask(__name__)
 
-app.config["SECRET_KEY"] = "chave-secreta-do-sistema"
-import os
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY",
+    "chave-local-altere-em-producao",
+)
 
-database_url = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+    "DATABASE_URL",
+    "sqlite:///database.db",
+)
 
-if database_url:
-    database_url = database_url.replace("postgres://", "postgresql://")
-
-app.config["SQLALCHEMY_DATABASE_URI"] = database_url or "sqlite:///database.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_pre_ping": True
-}
 
 db.init_app(app)
 
 
 def criar_banco():
+    """Cria as tabelas e acrescenta colunas novas em bancos já existentes."""
     db.create_all()
 
     inspector = inspect(db.engine)
-
-    # Verifica se a tabela da ficha técnica já existe
     tabelas = inspector.get_table_names()
 
-    if "ficha_tecnica" not in tabelas:
-        return
+    if "ficha_tecnica" in tabelas:
+        colunas_ficha = {
+            coluna["name"]
+            for coluna in inspector.get_columns("ficha_tecnica")
+        }
 
-    # Obtém as colunas atuais da tabela
-    colunas = [
-        coluna["name"]
-        for coluna in inspector.get_columns("ficha_tecnica")
-    ]
+        if "produto_base_id" not in colunas_ficha:
+            with db.engine.begin() as conexao:
+                conexao.execute(
+                    text(
+                        "ALTER TABLE ficha_tecnica "
+                        "ADD COLUMN produto_base_id INTEGER "
+                        "REFERENCES produto(id)"
+                    )
+                )
 
-    # Adiciona produto_base_id sem apagar os dados existentes
-    if "produto_base_id" not in colunas:
-        with db.engine.begin() as conexao:
-            conexao.execute(
-                text(
-                    "ALTER TABLE ficha_tecnica "
-                    "ADD COLUMN produto_base_id INTEGER "
-                    "REFERENCES produto(id)"
+            print("Coluna produto_base_id criada com sucesso.")
+
+    if "produto" in tabelas:
+        colunas_produto = {
+            coluna["name"]
+            for coluna in inspector.get_columns("produto")
+        }
+
+        if "finalidade" not in colunas_produto:
+            with db.engine.begin() as conexao:
+                conexao.execute(
+                    text(
+                        "ALTER TABLE produto "
+                        "ADD COLUMN finalidade VARCHAR(30) "
+                        "NOT NULL DEFAULT 'Venda'"
+                    )
+                )
+
+            print("Coluna finalidade criada com sucesso.")
+
+
+def usuario_logado():
+    return "usuario_id" in session
+
+
+def converter_float(valor, padrao=0.0):
+    """Converte campos numéricos aceitando ponto ou vírgula."""
+    if valor is None:
+        return padrao
+
+    texto_valor = str(valor).strip()
+
+    if not texto_valor:
+        return padrao
+
+    try:
+        return float(texto_valor.replace(",", "."))
+    except ValueError:
+        return padrao
+
+
+def ficha_cria_ciclo(produto_id, produto_base_id, visitados=None):
+    """Verifica se a inclusão de um produto-base criaria referência circular."""
+    if produto_id == produto_base_id:
+        return True
+
+    if visitados is None:
+        visitados = set()
+
+    if produto_base_id in visitados:
+        return False
+
+    visitados.add(produto_base_id)
+
+    itens_base = FichaTecnica.query.filter_by(
+        produto_id=produto_base_id
+    ).all()
+
+    for item in itens_base:
+        if item.produto_base_id:
+            if item.produto_base_id == produto_id:
+                return True
+
+            if ficha_cria_ciclo(
+                produto_id,
+                item.produto_base_id,
+                visitados,
+            ):
+                return True
+
+    return False
+
+
+def calcular_consumo_insumos(produto, multiplicador=1.0, caminho=None):
+    """
+    Expande a ficha técnica do produto e retorna uma lista de consumos:
+    [(insumo, quantidade_para_baixa), ...].
+
+    Produtos-base são abertos recursivamente até chegar aos insumos.
+    """
+    if caminho is None:
+        caminho = set()
+
+    if produto.id in caminho:
+        raise ValueError(
+            f"Foi encontrada uma referência circular na ficha de {produto.nome}."
+        )
+
+    caminho_atual = set(caminho)
+    caminho_atual.add(produto.id)
+
+    consumos = []
+
+    for item in produto.ficha_itens:
+        quantidade_item = (
+            item.quantidade_convertida_para_estoque()
+            * multiplicador
+        )
+
+        if item.insumo_id:
+            if item.insumo is None:
+                raise ValueError(
+                    f"Há um insumo inválido na ficha de {produto.nome}."
+                )
+
+            consumos.append((item.insumo, quantidade_item))
+            continue
+
+        if item.produto_base_id:
+            produto_base = Produto.query.get(item.produto_base_id)
+
+            if produto_base is None:
+                raise ValueError(
+                    f"Há um produto-base inválido na ficha de {produto.nome}."
+                )
+
+            consumos.extend(
+                calcular_consumo_insumos(
+                    produto_base,
+                    multiplicador=quantidade_item,
+                    caminho=caminho_atual,
                 )
             )
+            continue
 
-        print("Coluna produto_base_id criada com sucesso.")
+        raise ValueError(
+            f"Há um item sem insumo ou produto-base na ficha de {produto.nome}."
+        )
+
+    return consumos
+
+
+with app.app_context():
+    criar_banco()
 
 
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        usuario = request.form.get("usuario")
-        senha = request.form.get("senha")
+        nome_usuario = request.form.get("usuario", "").strip()
+        senha = request.form.get("senha", "")
 
-        user = Usuario.query.filter_by(usuario=usuario).first()
+        user = Usuario.query.filter_by(
+            usuario=nome_usuario
+        ).first()
 
         if user and user.verificar_senha(senha):
             session["usuario_id"] = user.id
@@ -90,69 +226,103 @@ def login():
 
 @app.route("/dashboard")
 def dashboard():
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
-    insumos = Insumo.query.all()
-    produtos = Produto.query.all()
-    vendas = Venda.query.all()
+    insumos_lista = Insumo.query.all()
+    produtos_lista = Produto.query.all()
+    vendas_lista = Venda.query.all()
     financeiros = Financeiro.query.all()
 
-    receita_vendas = sum(v.receita_total for v in vendas)
-    cmv_total = sum(v.cmv_total for v in vendas)
-    margem_total = sum(v.margem_total for v in vendas)
+    receita_vendas = sum(
+        venda.receita_total or 0
+        for venda in vendas_lista
+    )
 
-    entradas_financeiras = sum(f.valor for f in financeiros if f.tipo == "Entrada")
-    despesas_operacionais = sum(f.valor for f in financeiros if f.tipo == "Saída")
+    cmv_total = sum(
+        venda.cmv_total or 0
+        for venda in vendas_lista
+    )
+
+    margem_total = sum(
+        venda.margem_total or 0
+        for venda in vendas_lista
+    )
+
+    entradas_financeiras = sum(
+        financeiro.valor or 0
+        for financeiro in financeiros
+        if financeiro.tipo == "Entrada"
+    )
+
+    despesas_operacionais = sum(
+        financeiro.valor or 0
+        for financeiro in financeiros
+        if financeiro.tipo == "Saída"
+    )
 
     receita_total = receita_vendas + entradas_financeiras
     lucro_operacional = margem_total - despesas_operacionais
 
     margem_percentual = 0
+
     if receita_vendas > 0:
-        margem_percentual = (margem_total / receita_vendas) * 100
+        margem_percentual = (
+            margem_total / receita_vendas
+        ) * 100
 
     valor_estoque = sum(
-        i.estoque_atual() * i.custo_medio_unitario()
-        for i in insumos
+        insumo.estoque_atual()
+        * insumo.custo_medio_unitario()
+        for insumo in insumos_lista
     )
 
     itens_ponto_pedido = sum(
-        1 for i in insumos
-        if i.status_estoque() == "Ponto de pedido"
+        1
+        for insumo in insumos_lista
+        if insumo.status_estoque() == "Ponto de pedido"
     )
 
     cobertura_baixa = sum(
-        1 for i in insumos
-        if i.status_estoque() == "Cobertura baixa"
+        1
+        for insumo in insumos_lista
+        if insumo.status_estoque() == "Cobertura baixa"
     )
 
     insumos_sem_estoque = [
-        i for i in insumos
-        if i.estoque_atual() <= 0
+        insumo
+        for insumo in insumos_lista
+        if insumo.estoque_atual() <= 0
     ]
 
     insumos_ponto_pedido = [
-        i for i in insumos
-        if i.status_estoque() == "Ponto de pedido"
+        insumo
+        for insumo in insumos_lista
+        if insumo.status_estoque() == "Ponto de pedido"
     ]
 
     insumos_cobertura_baixa = [
-        i for i in insumos
-        if i.status_estoque() == "Cobertura baixa"
+        insumo
+        for insumo in insumos_lista
+        if insumo.status_estoque() == "Cobertura baixa"
     ]
 
     produtos_margem_baixa = [
-        p for p in produtos
-        if p.percentual_margem() < 40
+        produto
+        for produto in produtos_lista
+        if produto.percentual_margem() < 40
     ]
 
     return render_template(
         "dashboard.html",
         nome=session.get("usuario_nome"),
-        total_insumos=len(insumos),
-        total_produtos=len(produtos),
-        produtos_ativos=sum(1 for p in produtos if p.ativo),
+        total_insumos=len(insumos_lista),
+        total_produtos=len(produtos_lista),
+        produtos_ativos=sum(
+            1
+            for produto in produtos_lista
+            if produto.ativo
+        ),
         valor_estoque=valor_estoque,
         itens_ponto_pedido=itens_ponto_pedido,
         cobertura_baixa=cobertura_baixa,
@@ -166,109 +336,203 @@ def dashboard():
         insumos_sem_estoque=insumos_sem_estoque,
         insumos_ponto_pedido=insumos_ponto_pedido,
         insumos_cobertura_baixa=insumos_cobertura_baixa,
-        produtos_margem_baixa=produtos_margem_baixa
+        produtos_margem_baixa=produtos_margem_baixa,
     )
-    
+
 
 @app.route("/insumos", methods=["GET", "POST"])
 def insumos():
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     if request.method == "POST":
+        nome = request.form.get("nome", "").strip()
+        unidade = request.form.get("unidade", "").strip()
+        categoria = request.form.get(
+            "categoria",
+            "Matéria-prima",
+        ).strip()
+
+        if not nome or not unidade:
+            flash("Preencha o nome e a unidade do insumo.")
+            return redirect(url_for("insumos"))
+
         novo = Insumo(
-            nome=request.form["nome"],
-            unidade=request.form["unidade"],
-            categoria=request.form["categoria"]
+            nome=nome,
+            unidade=unidade,
+            categoria=categoria or "Matéria-prima",
         )
 
         db.session.add(novo)
         db.session.commit()
 
+        flash("Insumo cadastrado com sucesso!")
         return redirect(url_for("insumos"))
 
     lista = Insumo.query.order_by(Insumo.nome).all()
-    return render_template("insumos.html", insumos=lista)
+
+    return render_template(
+        "insumos.html",
+        insumos=lista,
+    )
 
 
 @app.route("/entrada_estoque/<int:insumo_id>", methods=["POST"])
 def entrada_estoque(insumo_id):
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     insumo = Insumo.query.get_or_404(insumo_id)
 
-    entrada = MovimentacaoEstoque(
-        insumo_id=insumo_id,
-        tipo="Entrada",
-        quantidade=float(request.form["quantidade"]),
-        valor_total=float(request.form["valor_total"]),
-        observacao="Compra registrada"
+    quantidade = converter_float(
+        request.form.get("quantidade")
     )
 
-    db.session.add(entrada)
-
-    saida_financeira = Financeiro(
-        tipo="Saída",
-        categoria="Compra de insumos",
-        descricao=f"Compra de {insumo.nome}",
-        valor=float(request.form["valor_total"])
+    valor_total = converter_float(
+        request.form.get("valor_total")
     )
 
-    db.session.add(saida_financeira)
-    db.session.commit()
+    if quantidade <= 0:
+        flash("A quantidade da entrada deve ser maior que zero.")
+        return redirect(url_for("insumos"))
+
+    if valor_total < 0:
+        flash("O valor total não pode ser negativo.")
+        return redirect(url_for("insumos"))
+
+    try:
+        entrada = MovimentacaoEstoque(
+            insumo_id=insumo_id,
+            tipo="Entrada",
+            quantidade=quantidade,
+            valor_total=valor_total,
+            observacao="Compra registrada",
+        )
+
+        saida_financeira = Financeiro(
+            tipo="Saída",
+            categoria="Compra de insumos",
+            descricao=f"Compra de {insumo.nome}",
+            valor=valor_total,
+        )
+
+        db.session.add(entrada)
+        db.session.add(saida_financeira)
+        db.session.commit()
+
+        flash("Entrada de estoque registrada com sucesso!")
+
+    except Exception:
+        db.session.rollback()
+        flash("Não foi possível registrar a entrada de estoque.")
 
     return redirect(url_for("insumos"))
 
 
 @app.route("/insumos/editar/<int:id>", methods=["GET", "POST"])
 def editar_insumo(id):
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     insumo = Insumo.query.get_or_404(id)
 
     if request.method == "POST":
-        insumo.nome = request.form["nome"]
-        insumo.unidade = request.form["unidade"]
-        insumo.categoria = request.form.get("categoria", "Matéria-prima")
+        nome = request.form.get("nome", "").strip()
+        unidade = request.form.get("unidade", "").strip()
+        categoria = request.form.get(
+            "categoria",
+            "Matéria-prima",
+        ).strip()
+
+        if not nome or not unidade:
+            flash("Preencha o nome e a unidade do insumo.")
+            return redirect(
+                url_for("editar_insumo", id=insumo.id)
+            )
+
+        insumo.nome = nome
+        insumo.unidade = unidade
+        insumo.categoria = categoria or "Matéria-prima"
 
         db.session.commit()
 
+        flash("Insumo atualizado com sucesso!")
         return redirect(url_for("insumos"))
 
-    return render_template("editar_insumo.html", insumo=insumo)
+    return render_template(
+        "editar_insumo.html",
+        insumo=insumo,
+    )
 
 
-@app.route("/excluir_insumo/<int:id>")
+@app.route("/excluir_insumo/<int:id>", methods=["POST", "GET"])
 def excluir_insumo(id):
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     insumo = Insumo.query.get_or_404(id)
+
+    if getattr(insumo, "movimentacoes", None):
+        flash(
+            "Este insumo não pode ser excluído porque possui movimentações."
+        )
+        return redirect(url_for("insumos"))
+
+    itens_ficha = FichaTecnica.query.filter_by(
+        insumo_id=insumo.id
+    ).count()
+
+    if itens_ficha:
+        flash(
+            "Este insumo não pode ser excluído porque está em uma ficha técnica."
+        )
+        return redirect(url_for("insumos"))
+
     db.session.delete(insumo)
     db.session.commit()
 
+    flash("Insumo excluído com sucesso!")
     return redirect(url_for("insumos"))
+
 
 @app.route("/produtos", methods=["GET", "POST"])
 def produtos():
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        tipo_produto = request.form["tipo_produto"]
-        finalidade = request.form.get("finalidade", "Venda")
+        tipo_produto = request.form.get(
+            "tipo_produto",
+            "Produzido",
+        )
+
+        finalidade = request.form.get(
+            "finalidade",
+            "Venda",
+        )
+
+        nome = request.form.get("nome", "").strip()
+        categoria = request.form.get("categoria", "").strip()
+
+        if not nome or not categoria:
+            flash("Preencha o nome e a categoria do produto.")
+            return redirect(url_for("produtos"))
 
         novo = Produto(
-            nome=request.form["nome"],
-            categoria=request.form["categoria"],
-            preco_venda=float(request.form.get("preco_venda") or 0),
+            nome=nome,
+            categoria=categoria,
+            preco_venda=converter_float(
+                request.form.get("preco_venda")
+            ),
             tipo_produto=tipo_produto,
             finalidade=finalidade,
-            custo_compra=float(request.form.get("custo_compra") or 0),
-            estoque_produto=float(request.form.get("estoque_produto") or 0),
-            ativo=True
+            custo_compra=converter_float(
+                request.form.get("custo_compra")
+            ),
+            estoque_produto=converter_float(
+                request.form.get("estoque_produto")
+            ),
+            ativo=True,
         )
 
         db.session.add(novo)
@@ -281,24 +545,48 @@ def produtos():
 
     return render_template(
         "produtos.html",
-        produtos=lista
+        produtos=lista,
     )
 
 
 @app.route("/editar_produto/<int:id>", methods=["POST"])
 def editar_produto(id):
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     produto = Produto.query.get_or_404(id)
 
-    produto.nome = request.form["nome"]
-    produto.categoria = request.form["categoria"]
-    produto.preco_venda = float(request.form.get("preco_venda") or 0)
-    produto.tipo_produto = request.form["tipo_produto"]
-    produto.finalidade = request.form.get("finalidade", "Venda")
-    produto.custo_compra = float(request.form.get("custo_compra") or 0)
-    produto.estoque_produto = float(request.form.get("estoque_produto") or 0)
+    produto.nome = request.form.get(
+        "nome",
+        produto.nome,
+    ).strip()
+
+    produto.categoria = request.form.get(
+        "categoria",
+        produto.categoria,
+    ).strip()
+
+    produto.preco_venda = converter_float(
+        request.form.get("preco_venda")
+    )
+
+    produto.tipo_produto = request.form.get(
+        "tipo_produto",
+        produto.tipo_produto,
+    )
+
+    produto.finalidade = request.form.get(
+        "finalidade",
+        "Venda",
+    )
+
+    produto.custo_compra = converter_float(
+        request.form.get("custo_compra")
+    )
+
+    produto.estoque_produto = converter_float(
+        request.form.get("estoque_produto")
+    )
 
     db.session.commit()
 
@@ -306,15 +594,30 @@ def editar_produto(id):
     return redirect(url_for("produtos"))
 
 
-@app.route("/excluir_produto/<int:id>")
+@app.route("/excluir_produto/<int:id>", methods=["POST", "GET"])
 def excluir_produto(id):
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     produto = Produto.query.get_or_404(id)
 
-    if produto.fichas_como_base:
-        flash("Este produto não pode ser excluído porque está sendo usado como preparo interno.")
+    if getattr(produto, "fichas_como_base", None):
+        flash(
+            "Este produto não pode ser excluído porque está sendo usado "
+            "como preparo interno."
+        )
+        return redirect(url_for("produtos"))
+
+    if produto.ficha_itens:
+        flash(
+            "Exclua primeiro os itens da ficha técnica deste produto."
+        )
+        return redirect(url_for("produtos"))
+
+    if getattr(produto, "vendas", None):
+        flash(
+            "Este produto não pode ser excluído porque possui vendas registradas."
+        )
         return redirect(url_for("produtos"))
 
     db.session.delete(produto)
@@ -324,9 +627,9 @@ def excluir_produto(id):
     return redirect(url_for("produtos"))
 
 
-@app.route("/alterar_status_produto/<int:id>")
+@app.route("/alterar_status_produto/<int:id>", methods=["POST", "GET"])
 def alterar_status_produto(id):
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     produto = Produto.query.get_or_404(id)
@@ -334,23 +637,41 @@ def alterar_status_produto(id):
 
     db.session.commit()
 
+    flash("Status do produto atualizado!")
     return redirect(url_for("produtos"))
+
 
 @app.route("/ficha_tecnica", methods=["GET", "POST"])
 def ficha_tecnica():
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        produto_id = int(request.form["produto_id"])
-        tipo_item = request.form["tipo_item"]
-        quantidade = float(request.form["quantidade"])
-        unidade_utilizada = request.form["unidade_utilizada"]
+        produto_id = request.form.get("produto_id")
+        tipo_item = request.form.get("tipo_item")
+        quantidade = converter_float(
+            request.form.get("quantidade")
+        )
+        unidade_utilizada = request.form.get(
+            "unidade_utilizada",
+            "",
+        ).strip()
+
+        if not produto_id:
+            flash("Selecione o produto da ficha técnica.")
+            return redirect(url_for("ficha_tecnica"))
+
+        if quantidade <= 0:
+            flash("A quantidade deve ser maior que zero.")
+            return redirect(url_for("ficha_tecnica"))
+
+        produto_id = int(produto_id)
+        Produto.query.get_or_404(produto_id)
 
         item = FichaTecnica(
             produto_id=produto_id,
             quantidade=quantidade,
-            unidade_utilizada=unidade_utilizada
+            unidade_utilizada=unidade_utilizada,
         )
 
         if tipo_item == "insumo":
@@ -361,26 +682,37 @@ def ficha_tecnica():
                 return redirect(url_for("ficha_tecnica"))
 
             item.insumo_id = int(insumo_id)
+            item.produto_base_id = None
 
         elif tipo_item == "produto":
-            produto_base_id = request.form.get("produto_base_id")
+            produto_base_id = request.form.get(
+                "produto_base_id"
+            )
 
             if not produto_base_id:
-                flash("Selecione um produto base.")
+                flash("Selecione um produto-base.")
                 return redirect(url_for("ficha_tecnica"))
 
             produto_base_id = int(produto_base_id)
 
-            if produto_base_id == produto_id:
-                flash("Um produto não pode ser usado como base dele mesmo.")
-                return redirect(url_for("ficha_tecnica"))
-
-            produto_base = Produto.query.get_or_404(produto_base_id)
+            produto_base = Produto.query.get_or_404(
+                produto_base_id
+            )
 
             if produto_base.tipo_produto != "Produzido":
-                flash("Somente produtos produzidos podem ser usados como base.")
+                flash(
+                    "Somente produtos produzidos podem ser usados como base."
+                )
                 return redirect(url_for("ficha_tecnica"))
 
+            if ficha_cria_ciclo(produto_id, produto_base_id):
+                flash(
+                    "Essa inclusão criaria uma referência circular "
+                    "entre as fichas técnicas."
+                )
+                return redirect(url_for("ficha_tecnica"))
+
+            item.insumo_id = None
             item.produto_base_id = produto_base_id
 
         else:
@@ -393,18 +725,17 @@ def ficha_tecnica():
         flash("Item adicionado à ficha técnica com sucesso!")
         return redirect(url_for("ficha_tecnica"))
 
-    produtos = Produto.query.filter_by(
+    produtos_lista = Produto.query.filter_by(
         ativo=True
     ).order_by(Produto.nome).all()
 
     produtos_base = Produto.query.filter_by(
-    tipo_produto="Produzido",
-    finalidade="Preparo Interno",
-    ativo=True
-
+        tipo_produto="Produzido",
+        finalidade="Preparo Interno",
+        ativo=True,
     ).order_by(Produto.nome).all()
 
-    insumos = Insumo.query.order_by(
+    insumos_lista = Insumo.query.order_by(
         Insumo.nome
     ).all()
 
@@ -414,16 +745,16 @@ def ficha_tecnica():
 
     return render_template(
         "ficha_tecnica.html",
-        produtos=produtos,
+        produtos=produtos_lista,
         produtos_base=produtos_base,
-        insumos=insumos,
-        itens=itens
+        insumos=insumos_lista,
+        itens=itens,
     )
 
 
-@app.route("/excluir_item_ficha/<int:id>")
+@app.route("/excluir_item_ficha/<int:id>", methods=["POST", "GET"])
 def excluir_item_ficha(id):
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     item = FichaTecnica.query.get_or_404(id)
@@ -432,107 +763,250 @@ def excluir_item_ficha(id):
     db.session.commit()
 
     flash("Item removido da ficha técnica.")
-
     return redirect(url_for("ficha_tecnica"))
+
 
 @app.route("/vendas", methods=["GET", "POST"])
 def vendas():
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        produto_id = int(request.form["produto_id"])
-        quantidade_vendida = int(request.form["quantidade"])
-
-        produto = Produto.query.get_or_404(produto_id)
-
-        if not produto.ficha_itens:
-            flash("Este produto ainda não possui ficha técnica cadastrada.")
-            return redirect(url_for("vendas"))
-
-        receita_total = produto.preco_venda * quantidade_vendida
-        cmv_total = produto.custo_materia_prima() * quantidade_vendida
-        margem_total = receita_total - cmv_total
-
-        venda = Venda(
-            produto_id=produto.id,
-            quantidade=quantidade_vendida,
-            receita_total=receita_total,
-            cmv_total=cmv_total,
-            margem_total=margem_total
+        produto_id = request.form.get("produto_id")
+        quantidade_vendida = int(
+            converter_float(
+                request.form.get("quantidade")
+            )
         )
 
-        db.session.add(venda)
-        db.session.flush()
+        if not produto_id:
+            flash("Selecione um produto.")
+            return redirect(url_for("vendas"))
 
-        for item in produto.ficha_itens:
-            quantidade_saida = item.quantidade_convertida_para_estoque() * quantidade_vendida
-            custo_saida = quantidade_saida * item.insumo.custo_medio_unitario()
+        if quantidade_vendida <= 0:
+            flash("A quantidade vendida deve ser maior que zero.")
+            return redirect(url_for("vendas"))
 
-            saida = MovimentacaoEstoque(
-                insumo_id=item.insumo_id,
-                tipo="Saída",
-                quantidade=quantidade_saida,
-                valor_total=custo_saida,
-                observacao=f"Venda de {quantidade_vendida} un. - {produto.nome}",
-                venda_id=venda.id
+        produto = Produto.query.get_or_404(
+            int(produto_id)
+        )
+
+        if not produto.ativo:
+            flash("Este produto está inativo.")
+            return redirect(url_for("vendas"))
+
+        if produto.finalidade == "Preparo Interno":
+            flash(
+                "Produtos de preparo interno não podem ser vendidos diretamente."
+            )
+            return redirect(url_for("vendas"))
+
+        if produto.tipo_produto == "Produzido" and not produto.ficha_itens:
+            flash(
+                "Este produto ainda não possui ficha técnica cadastrada."
+            )
+            return redirect(url_for("vendas"))
+
+        try:
+            consumos = []
+
+            if produto.tipo_produto == "Produzido":
+                consumos = calcular_consumo_insumos(
+                    produto,
+                    multiplicador=quantidade_vendida,
+                )
+
+                consumo_agrupado = {}
+
+                for insumo, quantidade in consumos:
+                    if insumo.id not in consumo_agrupado:
+                        consumo_agrupado[insumo.id] = {
+                            "insumo": insumo,
+                            "quantidade": 0,
+                        }
+
+                    consumo_agrupado[insumo.id]["quantidade"] += quantidade
+
+                faltas = []
+
+                for dados in consumo_agrupado.values():
+                    insumo = dados["insumo"]
+                    quantidade_necessaria = dados["quantidade"]
+                    estoque_disponivel = insumo.estoque_atual()
+
+                    if estoque_disponivel < quantidade_necessaria:
+                        faltas.append(
+                            f"{insumo.nome}: necessário "
+                            f"{quantidade_necessaria:.3f}, disponível "
+                            f"{estoque_disponivel:.3f}"
+                        )
+
+                if faltas:
+                    flash(
+                        "Estoque insuficiente: " + "; ".join(faltas)
+                    )
+                    return redirect(url_for("vendas"))
+
+            receita_total = (
+                produto.preco_venda
+                * quantidade_vendida
             )
 
-            db.session.add(saida)
+            cmv_total = (
+                produto.custo_materia_prima()
+                * quantidade_vendida
+            )
 
-        db.session.commit()
+            margem_total = receita_total - cmv_total
+
+            venda = Venda(
+                produto_id=produto.id,
+                quantidade=quantidade_vendida,
+                receita_total=receita_total,
+                cmv_total=cmv_total,
+                margem_total=margem_total,
+            )
+
+            db.session.add(venda)
+            db.session.flush()
+
+            if produto.tipo_produto == "Produzido":
+                for insumo, quantidade_saida in consumos:
+                    custo_saida = (
+                        quantidade_saida
+                        * insumo.custo_medio_unitario()
+                    )
+
+                    saida = MovimentacaoEstoque(
+                        insumo_id=insumo.id,
+                        tipo="Saída",
+                        quantidade=quantidade_saida,
+                        valor_total=custo_saida,
+                        observacao=(
+                            f"Venda de {quantidade_vendida} un. "
+                            f"- {produto.nome}"
+                        ),
+                        venda_id=venda.id,
+                    )
+
+                    db.session.add(saida)
+
+            elif produto.tipo_produto == "Revenda":
+                if produto.estoque_produto < quantidade_vendida:
+                    db.session.rollback()
+                    flash("Estoque insuficiente para este produto de revenda.")
+                    return redirect(url_for("vendas"))
+
+                produto.estoque_produto -= quantidade_vendida
+
+            db.session.commit()
+
+            flash("Venda registrada com sucesso!")
+
+        except ValueError as erro:
+            db.session.rollback()
+            flash(str(erro))
+
+        except Exception:
+            db.session.rollback()
+            flash("Não foi possível registrar a venda.")
 
         return redirect(url_for("vendas"))
 
-    produtos = Produto.query.filter_by(ativo=True).order_by(Produto.nome).all()
-    vendas_lista = Venda.query.order_by(Venda.data.desc()).all()
+    produtos_lista = Produto.query.filter_by(
+        ativo=True,
+        finalidade="Venda",
+    ).order_by(Produto.nome).all()
+
+    vendas_lista = Venda.query.order_by(
+        Venda.data.desc()
+    ).all()
 
     return render_template(
         "vendas.html",
-        produtos=produtos,
-        vendas=vendas_lista
+        produtos=produtos_lista,
+        vendas=vendas_lista,
     )
 
 
-@app.route("/excluir_venda/<int:id>")
+@app.route("/excluir_venda/<int:id>", methods=["POST", "GET"])
 def excluir_venda(id):
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     venda = Venda.query.get_or_404(id)
-    movimentacoes = MovimentacaoEstoque.query.filter_by(venda_id=venda.id).all()
 
-    for mov in movimentacoes:
-        db.session.delete(mov)
+    produto = venda.produto
+
+    movimentacoes = MovimentacaoEstoque.query.filter_by(
+        venda_id=venda.id
+    ).all()
+
+    for movimentacao in movimentacoes:
+        db.session.delete(movimentacao)
+
+    if (
+        produto
+        and produto.tipo_produto == "Revenda"
+    ):
+        produto.estoque_produto += venda.quantidade
 
     db.session.delete(venda)
     db.session.commit()
 
+    flash("Venda excluída e estoque restaurado!")
     return redirect(url_for("vendas"))
 
 
 @app.route("/financeiro", methods=["GET", "POST"])
 def financeiro():
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     if request.method == "POST":
+        valor = converter_float(
+            request.form.get("valor")
+        )
+
+        if valor <= 0:
+            flash("O valor deve ser maior que zero.")
+            return redirect(url_for("financeiro"))
+
         novo = Financeiro(
-            tipo=request.form["tipo"],
-            categoria=request.form["categoria"],
-            descricao=request.form["descricao"],
-            valor=float(request.form["valor"])
+            tipo=request.form.get("tipo", "Saída"),
+            categoria=request.form.get(
+                "categoria",
+                "",
+            ).strip(),
+            descricao=request.form.get(
+                "descricao",
+                "",
+            ).strip(),
+            valor=valor,
         )
 
         db.session.add(novo)
         db.session.commit()
 
+        flash("Lançamento financeiro registrado!")
         return redirect(url_for("financeiro"))
 
-    registros = Financeiro.query.order_by(Financeiro.data.desc()).all()
+    registros = Financeiro.query.order_by(
+        Financeiro.data.desc()
+    ).all()
 
-    total_entradas = sum(r.valor for r in registros if r.tipo == "Entrada")
-    total_saidas = sum(r.valor for r in registros if r.tipo == "Saída")
+    total_entradas = sum(
+        registro.valor
+        for registro in registros
+        if registro.tipo == "Entrada"
+    )
+
+    total_saidas = sum(
+        registro.valor
+        for registro in registros
+        if registro.tipo == "Saída"
+    )
+
     saldo = total_entradas - total_saidas
 
     return render_template(
@@ -540,115 +1014,201 @@ def financeiro():
         registros=registros,
         total_entradas=total_entradas,
         total_saidas=total_saidas,
-        saldo=saldo
+        saldo=saldo,
     )
 
 
-@app.route("/excluir_financeiro/<int:id>")
+@app.route("/excluir_financeiro/<int:id>", methods=["POST", "GET"])
 def excluir_financeiro(id):
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     registro = Financeiro.query.get_or_404(id)
+
     db.session.delete(registro)
     db.session.commit()
 
+    flash("Lançamento financeiro excluído!")
     return redirect(url_for("financeiro"))
 
 
 @app.route("/relatorios")
 def relatorios():
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
-    insumos = Insumo.query.order_by(Insumo.nome).all()
-    produtos = Produto.query.order_by(Produto.nome).all()
-    vendas = Venda.query.order_by(Venda.data.desc()).all()
-    financeiros = Financeiro.query.order_by(Financeiro.data.desc()).all()
+    insumos_lista = Insumo.query.order_by(
+        Insumo.nome
+    ).all()
 
-    receita_total = sum(v.receita_total for v in vendas)
-    cmv_total = sum(v.cmv_total for v in vendas)
-    margem_total = sum(v.margem_total for v in vendas)
+    produtos_lista = Produto.query.order_by(
+        Produto.nome
+    ).all()
+
+    vendas_lista = Venda.query.order_by(
+        Venda.data.desc()
+    ).all()
+
+    financeiros = Financeiro.query.order_by(
+        Financeiro.data.desc()
+    ).all()
+
+    receita_total = sum(
+        venda.receita_total or 0
+        for venda in vendas_lista
+    )
+
+    cmv_total = sum(
+        venda.cmv_total or 0
+        for venda in vendas_lista
+    )
+
+    margem_total = sum(
+        venda.margem_total or 0
+        for venda in vendas_lista
+    )
 
     despesas_operacionais = sum(
-        f.valor for f in financeiros
-        if f.tipo == "Saída"
+        financeiro.valor or 0
+        for financeiro in financeiros
+        if financeiro.tipo == "Saída"
     )
 
-    lucro_operacional = margem_total - despesas_operacionais
+    lucro_operacional = (
+        margem_total
+        - despesas_operacionais
+    )
 
     margem_percentual = 0
+
     if receita_total > 0:
-        margem_percentual = (margem_total / receita_total) * 100
+        margem_percentual = (
+            margem_total / receita_total
+        ) * 100
 
     valor_estoque = sum(
-        i.estoque_atual() * i.custo_medio_unitario()
-        for i in insumos
+        insumo.estoque_atual()
+        * insumo.custo_medio_unitario()
+        for insumo in insumos_lista
     )
 
-    total_vendido = sum(v.quantidade for v in vendas)
+    valor_estoque_produtos = sum(
+        (produto.estoque_produto or 0)
+        * (
+            produto.custo_compra
+            if produto.tipo_produto == "Revenda"
+            else produto.custo_materia_prima()
+        )
+        for produto in produtos_lista
+    )
+
+    valor_estoque += valor_estoque_produtos
+
+    total_vendido = sum(
+        venda.quantidade or 0
+        for venda in vendas_lista
+    )
 
     itens_abaixo_minimo = sum(
-        1 for i in insumos
-        if i.estoque_atual() <= i.estoque_minimo()
+        1
+        for insumo in insumos_lista
+        if insumo.estoque_atual()
+        <= insumo.estoque_minimo()
     )
 
     itens_ponto_pedido = sum(
-        1 for i in insumos
-        if i.estoque_atual() > i.estoque_minimo()
-        and i.estoque_atual() <= i.ponto_pedido()
+        1
+        for insumo in insumos_lista
+        if insumo.estoque_minimo()
+        < insumo.estoque_atual()
+        <= insumo.ponto_pedido()
     )
 
-    coberturas = [
-        i.cobertura_estoque() for i in insumos
-        if i.cobertura_estoque() > 0
-    ]
+    coberturas = []
 
-    cobertura_media = sum(coberturas) / len(coberturas) if coberturas else 0
+    for insumo in insumos_lista:
+        cobertura = insumo.cobertura_estoque()
 
-    giros = [
-        i.giro_estoque() for i in insumos
-        if i.giro_estoque() > 0
-    ]
+        if cobertura > 0:
+            coberturas.append(cobertura)
 
-    giro_medio = sum(giros) / len(giros) if giros else 0
+    cobertura_media = (
+        sum(coberturas) / len(coberturas)
+        if coberturas
+        else 0
+    )
 
-    lotes = [
-        i.lote_economico() for i in insumos
-        if i.lote_economico() > 0
-    ]
+    giros = []
 
-    lote_economico_medio = sum(lotes) / len(lotes) if lotes else 0
+    for insumo in insumos_lista:
+        giro = insumo.giro_estoque()
+
+        if giro > 0:
+            giros.append(giro)
+
+    giro_medio = (
+        sum(giros) / len(giros)
+        if giros
+        else 0
+    )
+
+    lotes = []
+
+    for insumo in insumos_lista:
+        lote = insumo.lote_economico()
+
+        if lote > 0:
+            lotes.append(lote)
+
+    lote_economico_medio = (
+        sum(lotes) / len(lotes)
+        if lotes
+        else 0
+    )
 
     ranking_produtos = {}
 
-    for venda in vendas:
-        nome = venda.produto.nome
+    for venda in vendas_lista:
+        if venda.produto is None:
+            continue
 
-        if nome not in ranking_produtos:
-            ranking_produtos[nome] = {
+        nome_produto = venda.produto.nome
+
+        if nome_produto not in ranking_produtos:
+            ranking_produtos[nome_produto] = {
                 "quantidade": 0,
                 "receita": 0,
                 "cmv": 0,
-                "margem": 0
+                "margem": 0,
             }
 
-        ranking_produtos[nome]["quantidade"] += venda.quantidade
-        ranking_produtos[nome]["receita"] += venda.receita_total
-        ranking_produtos[nome]["cmv"] += venda.cmv_total
-        ranking_produtos[nome]["margem"] += venda.margem_total
+        ranking_produtos[nome_produto]["quantidade"] += (
+            venda.quantidade or 0
+        )
+
+        ranking_produtos[nome_produto]["receita"] += (
+            venda.receita_total or 0
+        )
+
+        ranking_produtos[nome_produto]["cmv"] += (
+            venda.cmv_total or 0
+        )
+
+        ranking_produtos[nome_produto]["margem"] += (
+            venda.margem_total or 0
+        )
 
     ranking_produtos = sorted(
         ranking_produtos.items(),
         key=lambda item: item[1]["quantidade"],
-        reverse=True
+        reverse=True,
     )
 
     return render_template(
         "relatorios.html",
-        insumos=insumos,
-        produtos=produtos,
-        vendas=vendas,
+        insumos=insumos_lista,
+        produtos=produtos_lista,
+        vendas=vendas_lista,
         financeiros=financeiros,
         receita_total=receita_total,
         cmv_total=cmv_total,
@@ -663,15 +1223,18 @@ def relatorios():
         itens_ponto_pedido=itens_ponto_pedido,
         cobertura_media=cobertura_media,
         giro_medio=giro_medio,
-        lote_economico_medio=lote_economico_medio
+        lote_economico_medio=lote_economico_medio,
     )
+
 
 @app.route("/exportar_caixa")
 def exportar_caixa():
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
-    vendas = Venda.query.order_by(Venda.data.asc()).all()
+    vendas_lista = Venda.query.order_by(
+        Venda.data.asc()
+    ).all()
 
     wb = Workbook()
     ws = wb.active
@@ -679,38 +1242,51 @@ def exportar_caixa():
 
     ws["A1"] = "ERP RESTAURANTE"
     ws["A2"] = "FECHAMENTO DE CAIXA"
-    ws["A3"] = f"Data de emissão: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    ws["A3"] = (
+        "Data de emissão: "
+        f"{datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    )
 
     ws.append([])
 
-    ws.append([
-        "Data",
-        "Produto",
-        "Quantidade",
-        "Receita",
-        "CMV",
-        "Margem de Contribuição"
-    ])
+    ws.append(
+        [
+            "Data",
+            "Produto",
+            "Quantidade",
+            "Receita",
+            "CMV",
+            "Margem de Contribuição",
+        ]
+    )
 
     receita_total = 0
     cmv_total = 0
     margem_total = 0
     quantidade_total = 0
 
-    for venda in vendas:
-        ws.append([
-            venda.data.strftime("%d/%m/%Y %H:%M"),
-            venda.produto.nome,
-            venda.quantidade,
-            venda.receita_total,
-            venda.cmv_total,
-            venda.margem_total
-        ])
+    for venda in vendas_lista:
+        nome_produto = (
+            venda.produto.nome
+            if venda.produto
+            else "Produto removido"
+        )
 
-        receita_total += venda.receita_total
-        cmv_total += venda.cmv_total
-        margem_total += venda.margem_total
-        quantidade_total += venda.quantidade
+        ws.append(
+            [
+                venda.data.strftime("%d/%m/%Y %H:%M"),
+                nome_produto,
+                venda.quantidade,
+                venda.receita_total,
+                venda.cmv_total,
+                venda.margem_total,
+            ]
+        )
+
+        receita_total += venda.receita_total or 0
+        cmv_total += venda.cmv_total or 0
+        margem_total += venda.margem_total or 0
+        quantidade_total += venda.quantidade or 0
 
     ws.append([])
     ws.append(["RESUMO DO CAIXA"])
@@ -719,22 +1295,44 @@ def exportar_caixa():
     ws.append(["CMV total", cmv_total])
     ws.append(["Margem de contribuição", margem_total])
 
+    ws.column_dimensions["A"].width = 20
+    ws.column_dimensions["B"].width = 30
+    ws.column_dimensions["C"].width = 15
+    ws.column_dimensions["D"].width = 15
+    ws.column_dimensions["E"].width = 15
+    ws.column_dimensions["F"].width = 25
+
+    for linha in ws.iter_rows(
+        min_row=6,
+        min_col=4,
+        max_col=6,
+    ):
+        for celula in linha:
+            celula.number_format = 'R$ #,##0.00'
+
     arquivo = io.BytesIO()
     wb.save(arquivo)
     arquivo.seek(0)
 
-    nome_arquivo = f"Fechamento_Caixa_{datetime.now().strftime('%d-%m-%Y')}.xlsx"
+    nome_arquivo = (
+        "Fechamento_Caixa_"
+        f"{datetime.now().strftime('%d-%m-%Y')}.xlsx"
+    )
 
     return send_file(
         arquivo,
         as_attachment=True,
         download_name=nome_arquivo,
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        mimetype=(
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
     )
+
 
 @app.route("/configuracoes")
 def configuracoes():
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
     total_insumos = Insumo.query.count()
@@ -748,46 +1346,103 @@ def configuracoes():
         total_insumos=total_insumos,
         total_produtos=total_produtos,
         total_vendas=total_vendas,
-        total_lancamentos=total_lancamentos
+        total_lancamentos=total_lancamentos,
     )
 
 
 @app.route("/fazer_backup")
 def fazer_backup():
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
-    origem = "instance/database.db"
-    pasta_backup = "backups"
+    uri_banco = app.config["SQLALCHEMY_DATABASE_URI"]
 
-    if not os.path.exists(pasta_backup):
-        os.makedirs(pasta_backup)
+    if not uri_banco.startswith("sqlite:///"):
+        flash(
+            "O backup local automático está disponível apenas para SQLite."
+        )
+        return redirect(url_for("configuracoes"))
 
-    data_hora = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    destino = os.path.join(pasta_backup, f"backup_{data_hora}.db")
+    caminho_relativo = uri_banco.replace(
+        "sqlite:///",
+        "",
+        1,
+    )
+
+    if os.path.isabs(caminho_relativo):
+        origem = caminho_relativo
+    else:
+        origem = os.path.join(
+            app.instance_path,
+            caminho_relativo,
+        )
+
+    pasta_backup = os.path.join(
+        app.root_path,
+        "backups",
+    )
+
+    os.makedirs(
+        pasta_backup,
+        exist_ok=True,
+    )
+
+    data_hora = datetime.now().strftime(
+        "%Y-%m-%d_%H-%M-%S"
+    )
+
+    destino = os.path.join(
+        pasta_backup,
+        f"backup_{data_hora}.db",
+    )
 
     if os.path.exists(origem):
         shutil.copy2(origem, destino)
         flash("Backup realizado com sucesso!")
     else:
-        flash("Banco de dados não encontrado.")
+        flash(
+            f"Banco de dados não encontrado em: {origem}"
+        )
 
     return redirect(url_for("configuracoes"))
 
 
 @app.route("/alterar_senha", methods=["POST"])
 def alterar_senha():
-    if "usuario_id" not in session:
+    if not usuario_logado():
         return redirect(url_for("login"))
 
-    usuario = Usuario.query.get(session["usuario_id"])
+    usuario = db.session.get(
+        Usuario,
+        session["usuario_id"],
+    )
 
-    senha_atual = request.form["senha_atual"]
-    nova_senha = request.form["nova_senha"]
-    confirmar = request.form["confirmar_senha"]
+    if usuario is None:
+        session.clear()
+        flash("Sua sessão expirou. Entre novamente.")
+        return redirect(url_for("login"))
+
+    senha_atual = request.form.get(
+        "senha_atual",
+        "",
+    )
+
+    nova_senha = request.form.get(
+        "nova_senha",
+        "",
+    )
+
+    confirmar = request.form.get(
+        "confirmar_senha",
+        "",
+    )
 
     if not usuario.verificar_senha(senha_atual):
         flash("Senha atual incorreta.")
+        return redirect(url_for("configuracoes"))
+
+    if len(nova_senha) < 6:
+        flash("A nova senha deve ter pelo menos 6 caracteres.")
         return redirect(url_for("configuracoes"))
 
     if nova_senha != confirmar:
@@ -800,15 +1455,12 @@ def alterar_senha():
     flash("Senha alterada com sucesso!")
     return redirect(url_for("configuracoes"))
 
-@app.route("/editar_produto/<int:id>", methods=["POST"])
 
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
 
-with app.app_context():
-    criar_banco()
 
 if __name__ == "__main__":
     app.run(debug=True)
