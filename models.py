@@ -625,7 +625,11 @@ class FichaTecnica(db.Model):
 
 class Venda(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    data = db.Column(db.DateTime, default=datetime.now)
+
+    data = db.Column(
+        db.DateTime,
+        default=datetime.now
+    )
 
     produto_id = db.Column(
         db.Integer,
@@ -653,6 +657,11 @@ class Venda(db.Model):
         default=0
     )
 
+    produto = db.relationship(
+        "Produto",
+        back_populates="vendas"
+    )
+
     movimentacoes = db.relationship(
         "MovimentacaoEstoque",
         backref="venda",
@@ -660,13 +669,13 @@ class Venda(db.Model):
     )
 
     def margem_percentual(self):
-        if self.receita_total <= 0:
+        receita = float(self.receita_total or 0)
+        margem = float(self.margem_total or 0)
+
+        if receita <= 0:
             return 0
 
-        return (
-            self.margem_total / self.receita_total
-        ) * 100
-
+        return (margem / receita) * 100
 
 # =========================================================
 # FINANCEIRO
