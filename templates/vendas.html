@@ -2,92 +2,794 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
     <title>Vendas - ERP Restaurante</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
 </head>
+
 <body>
 
 <div class="layout">
+
     <aside class="sidebar">
-        <div class="brand"><div class="logo-menu">🔥</div><h2>ERP Restaurante</h2></div>
+
+        <div class="brand">
+            <div class="logo-menu">🔥</div>
+            <h2>ERP Restaurante</h2>
+        </div>
+
         <nav>
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('insumos') }}">Insumos</a>
-            <a href="{{ url_for('produtos') }}">Produtos</a>
-            <a href="{{ url_for('ficha_tecnica') }}">Ficha Técnica</a>
-            <a class="ativo" href="{{ url_for('vendas') }}">Vendas</a>
-            <a href="{{ url_for('financeiro') }}">Financeiro</a>
-            <a href="{{ url_for('relatorios') }}">Relatórios</a>
-            <a href="{{ url_for('configuracoes') }}">Configurações</a>
-            <a href="{{ url_for('logout') }}">Sair</a>
+            <a href="{{ url_for('dashboard') }}">
+                Dashboard
+            </a>
+
+            <a href="{{ url_for('insumos') }}">
+                Insumos
+            </a>
+
+            <a href="{{ url_for('produtos') }}">
+                Produtos
+            </a>
+
+            <a href="{{ url_for('ficha_tecnica') }}">
+                Ficha Técnica
+            </a>
+
+            <a
+                class="ativo"
+                href="{{ url_for('vendas') }}"
+            >
+                Vendas
+            </a>
+
+            <a href="{{ url_for('financeiro') }}">
+                Caixa
+            </a>
+
+            <a href="{{ url_for('relatorios') }}">
+                Relatórios
+            </a>
+
+            <a href="{{ url_for('configuracoes') }}">
+                Configurações
+            </a>
+
+            <a href="{{ url_for('logout') }}">
+                Sair
+            </a>
         </nav>
+
     </aside>
 
-    <main class="conteudo">
-        <header class="topo">
-            <h1>Registro de Vendas</h1>
-            <p>Registre a venda e o sistema baixa automaticamente os insumos da ficha técnica.</p>
+    <main class="conteudo vendas-pagina">
+
+        <header class="topo vendas-topo">
+
+            <div>
+                <span class="vendas-label">
+                    Gestão comercial
+                </span>
+
+                <h1>Vendas</h1>
+
+                <p>
+                    Registre vendas atuais e comandas antigas
+                    em um único histórico.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="btn-venda-principal"
+                onclick="abrirModalVenda()"
+            >
+                <span>＋</span>
+                Registrar venda
+            </button>
+
         </header>
 
-        {% with mensagens = get_flashed_messages() %}
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
             {% if mensagens %}
-                <div class="alerta">{{ mensagens[0] }}</div>
+
+                <div class="vendas-mensagens">
+
+                    {% for categoria, mensagem in mensagens %}
+
+                        <div class="flash {{ categoria }}">
+                            {{ mensagem }}
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
             {% endif %}
         {% endwith %}
 
-        <section class="painel">
-            <h2>Nova Venda</h2>
-            <form method="POST" class="form-grid venda-form">
-                <select name="produto_id" required>
-                    <option value="">Produto vendido</option>
-                    {% for p in produtos %}
-                        <option value="{{ p.id }}">{{ p.nome }} - R$ {{ "%.2f"|format(p.preco_venda) }}</option>
-                    {% endfor %}
-                </select>
+        <section class="vendas-indicadores">
 
-                <input type="number" name="quantidade" min="1" placeholder="Quantidade vendida" required>
+            <article class="venda-indicador">
 
-                <button type="submit">Registrar Venda</button>
-            </form>
+                <div class="venda-indicador-icone">
+                    💰
+                </div>
+
+                <div>
+                    <span>Receita registrada</span>
+
+                    <strong>
+                        R$ {{ "%.2f"|format(receita_total) }}
+                    </strong>
+                </div>
+
+            </article>
+
+            <article class="venda-indicador">
+
+                <div class="venda-indicador-icone">
+                    📦
+                </div>
+
+                <div>
+                    <span>CMV acumulado</span>
+
+                    <strong>
+                        R$ {{ "%.2f"|format(cmv_total) }}
+                    </strong>
+                </div>
+
+            </article>
+
+            <article class="venda-indicador">
+
+                <div class="venda-indicador-icone">
+                    📈
+                </div>
+
+                <div>
+                    <span>Margem acumulada</span>
+
+                    <strong>
+                        R$ {{ "%.2f"|format(margem_total) }}
+                    </strong>
+                </div>
+
+            </article>
+
+            <article class="venda-indicador">
+
+                <div class="venda-indicador-icone">
+                    🧾
+                </div>
+
+                <div>
+                    <span>Itens vendidos</span>
+
+                    <strong>
+                        {{ quantidade_total }}
+                    </strong>
+
+                    <small>
+                        {{ vendas_retroativas }}
+                        lançamento(s) retroativo(s)
+                    </small>
+                </div>
+
+            </article>
+
         </section>
 
-        <section class="painel">
-            <h2>Histórico de Vendas</h2>
-            <div class="tabela-container">
-                <table>
+        <section class="vendas-painel">
+
+            <div class="vendas-painel-topo">
+
+                <div>
+                    <span class="vendas-label">
+                        Movimentações
+                    </span>
+
+                    <h2>Histórico de vendas</h2>
+
+                    <p>
+                        Consulte os lançamentos por produto,
+                        data ou tipo de registro.
+                    </p>
+                </div>
+
+                <div class="vendas-filtros">
+
+                    <div class="venda-busca">
+
+                        <span>⌕</span>
+
+                        <input
+                            type="search"
+                            id="buscaVenda"
+                            placeholder="Buscar produto..."
+                            oninput="filtrarVendas()"
+                        >
+
+                    </div>
+
+                    <select
+                        id="filtroTipoVenda"
+                        onchange="filtrarVendas()"
+                    >
+                        <option value="todas">
+                            Todas as vendas
+                        </option>
+
+                        <option value="atual">
+                            Vendas com estoque
+                        </option>
+
+                        <option value="retroativa">
+                            Lançamentos retroativos
+                        </option>
+                    </select>
+
+                    <input
+                        type="date"
+                        id="filtroDataInicio"
+                        aria-label="Data inicial"
+                        onchange="filtrarVendas()"
+                    >
+
+                    <input
+                        type="date"
+                        id="filtroDataFim"
+                        aria-label="Data final"
+                        onchange="filtrarVendas()"
+                    >
+
+                    <button
+                        type="button"
+                        class="btn-limpar-filtros"
+                        onclick="limparFiltrosVendas()"
+                    >
+                        Limpar
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div class="vendas-tabela-container">
+
+                <table id="tabelaVendas">
+
                     <thead>
                         <tr>
                             <th>Data</th>
                             <th>Produto</th>
+                            <th>Tipo</th>
                             <th>Quantidade</th>
                             <th>Receita</th>
-                            <th>Custo da Mercadoria Vendida</th>
-                            <th>Margem de Contribuição</th>
+                            <th>CMV</th>
+                            <th>Margem</th>
                             <th>% Margem</th>
-                            <th>Ação</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
+
                     <tbody>
-                        {% for v in vendas %}
-                        <tr>
-                            <td>{{ v.data.strftime("%d/%m/%Y %H:%M") }}</td>
-                            <td>{{ v.produto.nome }}</td>
-                            <td>{{ v.quantidade }}</td>
-                            <td>R$ {{ "%.2f"|format(v.receita_total) }}</td>
-                            <td>R$ {{ "%.2f"|format(v.cmv_total) }}</td>
-                            <td>R$ {{ "%.2f"|format(v.margem_total) }}</td>
-                            <td>{{ "%.1f"|format(v.margem_percentual()) }}%</td>
-                            <td><a class="btn-excluir" href="{{ url_for('excluir_venda', id=v.id) }}">Excluir</a></td>
-                        </tr>
+
+                        {% for venda in vendas %}
+
+                            <tr
+                                data-venda
+                                data-produto="{{ venda.produto.nome|lower if venda.produto else '' }}"
+                                data-data="{{ venda.data.strftime('%Y-%m-%d') }}"
+                                data-tipo="{% if venda.movimentou_estoque %}atual{% else %}retroativa{% endif %}"
+                            >
+
+                                <td>
+                                    <div class="venda-data">
+
+                                        <strong>
+                                            {{ venda.data.strftime("%d/%m/%Y") }}
+                                        </strong>
+
+                                        {% if venda.movimentou_estoque %}
+                                            <small>
+                                                Estoque atualizado
+                                            </small>
+                                        {% else %}
+                                            <small class="retroativo">
+                                                Sem movimentar estoque
+                                            </small>
+                                        {% endif %}
+
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <div class="venda-produto">
+
+                                        <span>
+                                            {% if venda.produto and venda.produto.tipo_produto == "Revenda" %}
+                                                🧃
+                                            {% else %}
+                                                🍽️
+                                            {% endif %}
+                                        </span>
+
+                                        <div>
+                                            <strong>
+                                                {{ venda.produto.nome if venda.produto else "Produto não encontrado" }}
+                                            </strong>
+
+                                            <small>
+                                                {{ venda.produto.categoria if venda.produto else "-" }}
+                                            </small>
+                                        </div>
+
+                                    </div>
+                                </td>
+
+                                <td>
+                                    {% if venda.movimentou_estoque %}
+
+                                        <span class="venda-badge atual">
+                                            Venda atual
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="venda-badge retroativa">
+                                            Retroativa
+                                        </span>
+
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    <strong>
+                                        {{ venda.quantidade }}
+                                    </strong>
+                                </td>
+
+                                <td class="valor-receita">
+                                    R$ {{ "%.2f"|format(venda.receita_total or 0) }}
+                                </td>
+
+                                <td>
+                                    R$ {{ "%.2f"|format(venda.cmv_total or 0) }}
+                                </td>
+
+                                <td class="valor-margem">
+                                    R$ {{ "%.2f"|format(venda.margem_total or 0) }}
+                                </td>
+
+                                <td>
+                                    <span
+                                        class="
+                                            venda-margem-percentual
+                                            {% if venda.margem_percentual() < 40 %}
+                                                baixa
+                                            {% endif %}
+                                        "
+                                    >
+                                        {{ "%.1f"|format(venda.margem_percentual()) }}%
+                                    </span>
+                                </td>
+
+                                <td>
+
+                                    <form
+                                        method="POST"
+                                        action="{{ url_for('excluir_venda', id=venda.id) }}"
+                                        onsubmit="
+                                            return confirm(
+                                                'Deseja realmente excluir esta venda?'
+                                            )
+                                        "
+                                    >
+                                        <button
+                                            type="submit"
+                                            class="btn-excluir-venda"
+                                        >
+                                            🗑️ Excluir
+                                        </button>
+                                    </form>
+
+                                </td>
+
+                            </tr>
+
                         {% else %}
-                        <tr><td colspan="8" class="vazio">Nenhuma venda registrada ainda.</td></tr>
+
+                            <tr id="linhaSemVendas">
+                                <td
+                                    colspan="9"
+                                    class="vendas-vazio"
+                                >
+                                    <span>🧾</span>
+
+                                    <strong>
+                                        Nenhuma venda registrada
+                                    </strong>
+
+                                    <p>
+                                        Clique em “Registrar venda”
+                                        para adicionar o primeiro lançamento.
+                                    </p>
+                                </td>
+                            </tr>
+
                         {% endfor %}
+
                     </tbody>
+
                 </table>
+
+                <div
+                    id="nenhumResultadoVenda"
+                    class="vendas-sem-resultado"
+                    style="display: none;"
+                >
+                    Nenhuma venda encontrada com os filtros selecionados.
+                </div>
+
             </div>
+
         </section>
+
     </main>
+
 </div>
+
+<div
+    id="modalVenda"
+    class="venda-modal"
+    aria-hidden="true"
+>
+
+    <div class="venda-modal-conteudo">
+
+        <div class="venda-modal-cabecalho">
+
+            <div>
+                <span class="vendas-label">
+                    Novo lançamento
+                </span>
+
+                <h2>Registrar venda</h2>
+
+                <p>
+                    Para comandas antigas, informe a data original.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="venda-modal-fechar"
+                onclick="fecharModalVenda()"
+                aria-label="Fechar"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <form
+            method="POST"
+            class="venda-form-profissional"
+        >
+
+            <div class="venda-campo">
+
+                <label for="data_venda">
+                    Data da venda
+                </label>
+
+                <input
+                    type="date"
+                    name="data_venda"
+                    id="data_venda"
+                    value="{{ data_hoje }}"
+                    max="{{ data_hoje }}"
+                    required
+                    onchange="atualizarAvisoData()"
+                >
+
+            </div>
+
+            <div class="venda-aviso-data" id="avisoVendaAtual">
+
+                <span>📦</span>
+
+                <div>
+                    <strong>Venda do dia</strong>
+
+                    <p>
+                        Esta venda atualizará o estoque normalmente.
+                    </p>
+                </div>
+
+            </div>
+
+            <div
+                class="venda-aviso-data retroativo"
+                id="avisoVendaRetroativa"
+                style="display: none;"
+            >
+
+                <span>🕘</span>
+
+                <div>
+                    <strong>Lançamento retroativo</strong>
+
+                    <p>
+                        A venda será incluída nos relatórios,
+                        mas não modificará o estoque atual.
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="venda-campo">
+
+                <label for="produto_id">
+                    Produto vendido
+                </label>
+
+                <select
+                    name="produto_id"
+                    id="produto_id"
+                    required
+                >
+                    <option value="">
+                        Selecione um produto
+                    </option>
+
+                    {% for produto in produtos %}
+
+                        <option value="{{ produto.id }}">
+                            {{ produto.nome }}
+                            — R$ {{ "%.2f"|format(produto.preco_venda or 0) }}
+                        </option>
+
+                    {% endfor %}
+                </select>
+
+            </div>
+
+            <div class="venda-campo">
+
+                <label for="quantidade">
+                    Quantidade vendida
+                </label>
+
+                <input
+                    type="number"
+                    name="quantidade"
+                    id="quantidade"
+                    min="1"
+                    step="1"
+                    value="1"
+                    required
+                >
+
+            </div>
+
+            <div class="venda-modal-acoes">
+
+                <button
+                    type="button"
+                    class="btn-venda-cancelar"
+                    onclick="fecharModalVenda()"
+                >
+                    Cancelar
+                </button>
+
+                <button
+                    type="submit"
+                    class="btn-venda-salvar"
+                >
+                    Registrar venda
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<script>
+    function abrirModalVenda() {
+        const modal = document.getElementById(
+            "modalVenda"
+        );
+
+        modal.classList.add("aberto");
+        modal.setAttribute(
+            "aria-hidden",
+            "false"
+        );
+
+        document.body.classList.add(
+            "modal-venda-aberto"
+        );
+
+        atualizarAvisoData();
+    }
+
+    function fecharModalVenda() {
+        const modal = document.getElementById(
+            "modalVenda"
+        );
+
+        modal.classList.remove("aberto");
+        modal.setAttribute(
+            "aria-hidden",
+            "true"
+        );
+
+        document.body.classList.remove(
+            "modal-venda-aberto"
+        );
+    }
+
+    function atualizarAvisoData() {
+        const campoData = document.getElementById(
+            "data_venda"
+        );
+
+        const dataHoje = "{{ data_hoje }}";
+        const retroativa = (
+            campoData.value
+            && campoData.value < dataHoje
+        );
+
+        document.getElementById(
+            "avisoVendaAtual"
+        ).style.display = retroativa
+            ? "none"
+            : "flex";
+
+        document.getElementById(
+            "avisoVendaRetroativa"
+        ).style.display = retroativa
+            ? "flex"
+            : "none";
+    }
+
+    function filtrarVendas() {
+        const busca = (
+            document.getElementById(
+                "buscaVenda"
+            ).value || ""
+        ).toLowerCase().trim();
+
+        const tipo = document.getElementById(
+            "filtroTipoVenda"
+        ).value;
+
+        const inicio = document.getElementById(
+            "filtroDataInicio"
+        ).value;
+
+        const fim = document.getElementById(
+            "filtroDataFim"
+        ).value;
+
+        const linhas = document.querySelectorAll(
+            "tr[data-venda]"
+        );
+
+        let encontrados = 0;
+
+        linhas.forEach(function(linha) {
+            const produto = (
+                linha.dataset.produto || ""
+            );
+
+            const data = (
+                linha.dataset.data || ""
+            );
+
+            const tipoVenda = (
+                linha.dataset.tipo || ""
+            );
+
+            const correspondeBusca = (
+                produto.includes(busca)
+            );
+
+            const correspondeTipo = (
+                tipo === "todas"
+                || tipoVenda === tipo
+            );
+
+            const correspondeInicio = (
+                !inicio
+                || data >= inicio
+            );
+
+            const correspondeFim = (
+                !fim
+                || data <= fim
+            );
+
+            const mostrar = (
+                correspondeBusca
+                && correspondeTipo
+                && correspondeInicio
+                && correspondeFim
+            );
+
+            linha.style.display = mostrar
+                ? ""
+                : "none";
+
+            if (mostrar) {
+                encontrados += 1;
+            }
+        });
+
+        document.getElementById(
+            "nenhumResultadoVenda"
+        ).style.display = (
+            linhas.length > 0
+            && encontrados === 0
+        )
+            ? "block"
+            : "none";
+    }
+
+    function limparFiltrosVendas() {
+        document.getElementById(
+            "buscaVenda"
+        ).value = "";
+
+        document.getElementById(
+            "filtroTipoVenda"
+        ).value = "todas";
+
+        document.getElementById(
+            "filtroDataInicio"
+        ).value = "";
+
+        document.getElementById(
+            "filtroDataFim"
+        ).value = "";
+
+        filtrarVendas();
+    }
+
+    document.addEventListener(
+        "keydown",
+        function(event) {
+            if (event.key === "Escape") {
+                fecharModalVenda();
+            }
+        }
+    );
+
+    document
+        .getElementById("modalVenda")
+        .addEventListener(
+            "click",
+            function(event) {
+                if (event.target === this) {
+                    fecharModalVenda();
+                }
+            }
+        );
+</script>
 
 </body>
 </html>
