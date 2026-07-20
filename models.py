@@ -201,115 +201,288 @@ class MovimentacaoEstoque(db.Model):
 # =========================================================
 
 class Produto(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), nullable=False)
-    categoria = db.Column(db.String(50), nullable=False)
-    preco_venda = db.Column(db.Float, nullable=False)
-    ativo = db.Column(db.Boolean, default=True)
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    nome = db.Column(
+        db.String(120),
+        nullable=False
+    )
+
+    categoria = db.Column(
+        db.String(80),
+        nullable=True
+    )
+
+    preco_venda = db.Column(
+        db.Float,
+        default=0
+    )
+
+    ativo = db.Column(
+        db.Boolean,
+        default=True
+    )
 
     tipo_produto = db.Column(
-    db.String(30),
-    default="Produzido"
-)
+        db.String(30),
+        default="Produzido"
+    )
+
+    custo_compra = db.Column(
+        db.Float,
+        default=0
+    )
+
+    estoque_produto = db.Column(
+        db.Float,
+        default=0
+    )
 
     finalidade = db.Column(
-    db.String(30),
-    default="Venda",
-    nullable=False
-)
+        db.String(40),
+        default="Venda"
+    )
 
-    custo_compra = db.Column(db.Float, default=0)
-    estoque_produto = db.Column(db.Float, default=0)
+    # Rendimento total da receita.
+    # Exemplo: vinagrete rende 2 kg.
+    rendimento_quantidade = db.Column(
+        db.Float,
+        nullable=True,
+        default=1
+    )
 
-    custo_compra = db.Column(db.Float, default=0)
-    estoque_produto = db.Column(db.Float, default=0)
+    rendimento_unidade = db.Column(
+        db.String(20),
+        nullable=True,
+        default="un"
+    )
 
-    # Itens que formam a ficha técnica deste produto.
     ficha_itens = db.relationship(
         "FichaTecnica",
         foreign_keys="FichaTecnica.produto_id",
         back_populates="produto",
-        lazy=True,
         cascade="all, delete-orphan"
     )
 
-    # Fichas técnicas nas quais este produto aparece como base.
     fichas_como_base = db.relationship(
         "FichaTecnica",
         foreign_keys="FichaTecnica.produto_base_id",
-        back_populates="produto_base",
-        lazy=True
+        back_populates="produto_base"
     )
 
     vendas = db.relationship(
         "Venda",
-        backref="produto",
-        lazy=True
+        back_populates="produto"
     )
 
-    def custo_materia_prima(self):
-        if self.tipo_produto == "Revenda":
-            return self.custo_compra or 0
+    def possui_ficha_tecnica(self):
+        return len(self.ficha_itens) > 0
 
-        return sum(
-            item.custo_item()
-            for item in self.ficha_itens
+    def custo_materia_prima(self, produtos_visitados=None):
+        """
+        Retorna o custo total da receita ou composição.
+
+        Para um preparo interno:
+        retorna o custo de toda a receita.
+
+        Para produto de revenda sem ficha:
+        retorna o custo de compra.
+
+        Para produto com composição:
+        soma os custos dos componentes.
+        """
+
+        if produtos_visitados is None:
+            produtos_visitados = set()
+
+        # Segurança contra referência circular.
+        if self.id in produtos_visitados:
+            return 0
+
+        produtos_visitados = set(produtos_visitados)
+        produtos_visitados.add(self.id)
+
+        # Produto comprado sem composição.
+        if (
+            self.tipo_produto == "Revenda"
+            and not self.ficha_itens
+        ):
+            return float(self.custo_compra or 0)
+
+        custo_total = 0
+
+        for item in self.ficha_itens:
+            custo_total += item.custo_item(
+                produtos_visitados
+            )
+
+        return custo_total
+
+    def quantidade_convertida_para_rendimento(
+        self,
+        quantidade,
+        unidade_utilizada
+    ):
+        """
+        Converte a quantidade utilizada para a unidade
+        em que o rendimento do produto foi informado.
+        """
+
+        quantidade = float(quantidade or 0)
+
+        unidade_origem = (
+            unidade_utilizada or ""
+        ).strip()
+
+        unidade_destino = (
+            self.rendimento_unidade or ""
+        ).strip()
+
+        if unidade_origem == unidade_destino:
+            return quantidade
+
+        conversoes = {
+            ("g", "kg"): 0.001,
+            ("kg", "g"): 1000,
+            ("ml", "L"): 0.001,
+            ("L", "ml"): 1000,
+        }
+
+        fator = conversoes.get(
+            (
+                unidade_origem,
+                unidade_destino
+            )
         )
 
-    def margem_contribuicao(self):
-        return self.preco_venda - self.custo_materia_prima()
+        if fator is None:
+            raise ValueError(
+                f"Não é possível converter "
+                f"'{unidade_origem}' para "
+                f"'{unidade_destino}'."
+            )
 
-    def percentual_margem(self):
-        if self.preco_venda <= 0:
+        return quantidade * fator
+
+    def custo_proporcional(
+        self,
+        quantidade,
+        unidade_utilizada,
+        produtos_visitados=None
+    ):
+        """
+        Calcula o custo da quantidade utilizada
+        de um preparo interno.
+
+        Exemplo:
+        receita custa R$ 20,00 e rende 2 kg;
+        foram utilizados 50 g;
+        custo proporcional = R$ 0,50.
+        """
+
+        rendimento = float(
+            self.rendimento_quantidade or 0
+        )
+
+        if rendimento <= 0:
+            return 0
+
+        try:
+            quantidade_convertida = (
+                self.quantidade_convertida_para_rendimento(
+                    quantidade,
+                    unidade_utilizada
+                )
+            )
+        except ValueError:
+            return 0
+
+        custo_total_receita = (
+            self.custo_materia_prima(
+                produtos_visitados
+            )
+        )
+
+        proporcao_utilizada = (
+            quantidade_convertida / rendimento
+        )
+
+        return (
+            custo_total_receita
+            * proporcao_utilizada
+        )
+
+    def custo_por_unidade_produzida(self):
+        """
+        Retorna o custo por unidade de rendimento.
+
+        Exemplos:
+        - custo por kg;
+        - custo por litro;
+        - custo por unidade.
+        """
+
+        rendimento = float(
+            self.rendimento_quantidade or 0
+        )
+
+        if rendimento <= 0:
             return 0
 
         return (
-            self.margem_contribuicao() / self.preco_venda
-        ) * 100
+            self.custo_materia_prima()
+            / rendimento
+        )
 
-    def preco_sugerido(self):
-        custo = self.custo_materia_prima()
-        margem_desejada = 0.60
+    def margem_contribuicao(self):
+        preco = float(
+            self.preco_venda or 0
+        )
 
-        if custo <= 0:
+        custo = float(
+            self.custo_materia_prima()
+        )
+
+        return preco - custo
+
+    def percentual_margem(self):
+        preco = float(
+            self.preco_venda or 0
+        )
+
+        if preco <= 0:
             return 0
 
-        return custo / (1 - margem_desejada)
+        return (
+            self.margem_contribuicao()
+            / preco
+        ) * 100
 
-    def situacao_preco(self):
-        sugerido = self.preco_sugerido()
-
-        if sugerido <= 0:
-            return "Sem custo"
-
-        if self.preco_venda < sugerido:
-            return "Revisar"
-
-        return "Adequado"
-
-
-# =========================================================
-# FICHA TÉCNICA
-# =========================================================
 
 class FichaTecnica(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
 
-    # Produto cuja ficha técnica está sendo montada.
+    # Produto cuja ficha está sendo montada.
     produto_id = db.Column(
         db.Integer,
         db.ForeignKey("produto.id"),
         nullable=False
     )
 
-    # Insumo comum usado na receita.
+    # Insumo comprado usado na receita.
     insumo_id = db.Column(
         db.Integer,
         db.ForeignKey("insumo.id"),
         nullable=True
     )
 
-    # Produto produzido internamente usado como base.
+    # Preparo interno usado como componente.
     produto_base_id = db.Column(
         db.Integer,
         db.ForeignKey("produto.id"),
@@ -362,47 +535,86 @@ class FichaTecnica(db.Model):
         return "-"
 
     def quantidade_convertida_para_estoque(self):
-        # Produtos-base não usam a conversão do estoque de insumos.
+        """
+        Converte a unidade usada na ficha para
+        a unidade em que o insumo é controlado.
+        """
+
         if not self.insumo:
-            return self.quantidade
+            return float(
+                self.quantidade or 0
+            )
 
-        unidade_estoque = self.insumo.unidade
-        unidade_usada = self.unidade_utilizada
+        quantidade = float(
+            self.quantidade or 0
+        )
 
-        if unidade_estoque == "kg" and unidade_usada == "g":
-            return self.quantidade / 1000
+        unidade_estoque = (
+            self.insumo.unidade or ""
+        ).strip()
 
-        if unidade_estoque == "g" and unidade_usada == "kg":
-            return self.quantidade * 1000
+        unidade_usada = (
+            self.unidade_utilizada or ""
+        ).strip()
 
-        if unidade_estoque == "L" and unidade_usada == "ml":
-            return self.quantidade / 1000
+        if unidade_estoque == unidade_usada:
+            return quantidade
 
-        if unidade_estoque == "ml" and unidade_usada == "L":
-            return self.quantidade * 1000
+        conversoes = {
+            ("g", "kg"): 0.001,
+            ("kg", "g"): 1000,
+            ("ml", "L"): 0.001,
+            ("L", "ml"): 1000,
+        }
 
-        return self.quantidade
+        fator = conversoes.get(
+            (
+                unidade_usada,
+                unidade_estoque
+            )
+        )
 
-    def custo_item(self):
-        # Custo de um insumo comum.
+        if fator is None:
+            return quantidade
+
+        return quantidade * fator
+
+    def custo_item(self, produtos_visitados=None):
+        """
+        Calcula o custo do componente.
+
+        Insumo:
+        quantidade convertida × custo médio.
+
+        Preparo interno:
+        custo proporcional ao rendimento.
+        """
+
         if self.insumo:
             quantidade_convertida = (
                 self.quantidade_convertida_para_estoque()
             )
 
-            custo_unitario = (
+            custo_unitario = float(
                 self.insumo.custo_medio_unitario()
+                or 0
             )
 
-            return quantidade_convertida * custo_unitario
+            return (
+                quantidade_convertida
+                * custo_unitario
+            )
 
-        # Custo de um produto produzido internamente.
         if self.produto_base:
-            custo_produto_base = (
-                self.produto_base.custo_materia_prima()
+            return self.produto_base.custo_proporcional(
+                quantidade=self.quantidade,
+                unidade_utilizada=(
+                    self.unidade_utilizada
+                ),
+                produtos_visitados=(
+                    produtos_visitados
+                )
             )
-
-            return self.quantidade * custo_produto_base
 
         return 0
 

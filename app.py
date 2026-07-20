@@ -47,47 +47,104 @@ db.init_app(app)
 
 def criar_banco():
     """Cria as tabelas e acrescenta colunas novas em bancos já existentes."""
+
     db.create_all()
 
     inspector = inspect(db.engine)
     tabelas = inspector.get_table_names()
 
+    # ==================================================
+    # AJUSTES NA TABELA FICHA_TECNICA
+    # ==================================================
+
     if "ficha_tecnica" in tabelas:
         colunas_ficha = {
             coluna["name"]
-            for coluna in inspector.get_columns("ficha_tecnica")
+            for coluna in inspector.get_columns(
+                "ficha_tecnica"
+            )
         }
 
         if "produto_base_id" not in colunas_ficha:
             with db.engine.begin() as conexao:
                 conexao.execute(
                     text(
-                        "ALTER TABLE ficha_tecnica "
-                        "ADD COLUMN produto_base_id INTEGER "
-                        "REFERENCES produto(id)"
+                        """
+                        ALTER TABLE ficha_tecnica
+                        ADD COLUMN produto_base_id INTEGER
+                        REFERENCES produto(id)
+                        """
                     )
                 )
 
-            print("Coluna produto_base_id criada com sucesso.")
+            print(
+                "Coluna produto_base_id criada com sucesso."
+            )
+
+    # ==================================================
+    # AJUSTES NA TABELA PRODUTO
+    # ==================================================
 
     if "produto" in tabelas:
         colunas_produto = {
             coluna["name"]
-            for coluna in inspector.get_columns("produto")
+            for coluna in inspector.get_columns(
+                "produto"
+            )
         }
 
         if "finalidade" not in colunas_produto:
             with db.engine.begin() as conexao:
                 conexao.execute(
                     text(
-                        "ALTER TABLE produto "
-                        "ADD COLUMN finalidade VARCHAR(30) "
-                        "NOT NULL DEFAULT 'Venda'"
+                        """
+                        ALTER TABLE produto
+                        ADD COLUMN finalidade VARCHAR(30)
+                        NOT NULL DEFAULT 'Venda'
+                        """
                     )
                 )
 
-            print("Coluna finalidade criada com sucesso.")
+            print(
+                "Coluna finalidade criada com sucesso."
+            )
 
+        if (
+            "rendimento_quantidade"
+            not in colunas_produto
+        ):
+            with db.engine.begin() as conexao:
+                conexao.execute(
+                    text(
+                        """
+                        ALTER TABLE produto
+                        ADD COLUMN rendimento_quantidade
+                        FLOAT DEFAULT 1
+                        """
+                    )
+                )
+
+            print(
+                "Coluna rendimento_quantidade "
+                "criada com sucesso."
+            )
+
+        if "rendimento_unidade" not in colunas_produto:
+            with db.engine.begin() as conexao:
+                conexao.execute(
+                    text(
+                        """
+                        ALTER TABLE produto
+                        ADD COLUMN rendimento_unidade
+                        VARCHAR(20) DEFAULT 'un'
+                        """
+                    )
+                )
+
+            print(
+                "Coluna rendimento_unidade "
+                "criada com sucesso."
+            )
 
 def usuario_logado():
     return "usuario_id" in session
@@ -504,44 +561,116 @@ def produtos():
         tipo_produto = request.form.get(
             "tipo_produto",
             "Produzido",
-        )
+        ).strip()
 
         finalidade = request.form.get(
             "finalidade",
             "Venda",
+        ).strip()
+
+        nome = request.form.get(
+            "nome",
+            "",
+        ).strip()
+
+        categoria = request.form.get(
+            "categoria",
+            "",
+        ).strip()
+
+        preco_venda = converter_float(
+            request.form.get("preco_venda")
         )
 
-        nome = request.form.get("nome", "").strip()
-        categoria = request.form.get("categoria", "").strip()
+        custo_compra = converter_float(
+            request.form.get("custo_compra")
+        )
+
+        estoque_produto = converter_float(
+            request.form.get("estoque_produto")
+        )
+
+        rendimento_quantidade = converter_float(
+            request.form.get("rendimento_quantidade"),
+            1.0,
+        )
+
+        rendimento_unidade = request.form.get(
+            "rendimento_unidade",
+            "un",
+        ).strip()
 
         if not nome or not categoria:
-            flash("Preencha o nome e a categoria do produto.")
+            flash(
+                "Preencha o nome e a categoria do produto.",
+                "erro",
+            )
             return redirect(url_for("produtos"))
+
+        unidades_validas = {
+            "un",
+            "kg",
+            "g",
+            "L",
+            "ml",
+        }
+
+        if rendimento_unidade not in unidades_validas:
+            rendimento_unidade = "un"
+
+        if tipo_produto == "Revenda":
+            rendimento_quantidade = 1.0
+            rendimento_unidade = "un"
+
+        else:
+            custo_compra = 0
+            estoque_produto = 0
+
+            if rendimento_quantidade <= 0:
+                flash(
+                    "O rendimento do produto produzido deve ser maior que zero.",
+                    "erro",
+                )
+                return redirect(url_for("produtos"))
+
+        if finalidade == "Preparo Interno":
+            preco_venda = 0
 
         novo = Produto(
             nome=nome,
             categoria=categoria,
-            preco_venda=converter_float(
-                request.form.get("preco_venda")
-            ),
+            preco_venda=preco_venda,
             tipo_produto=tipo_produto,
             finalidade=finalidade,
-            custo_compra=converter_float(
-                request.form.get("custo_compra")
-            ),
-            estoque_produto=converter_float(
-                request.form.get("estoque_produto")
-            ),
+            custo_compra=custo_compra,
+            estoque_produto=estoque_produto,
+            rendimento_quantidade=rendimento_quantidade,
+            rendimento_unidade=rendimento_unidade,
             ativo=True,
         )
 
-        db.session.add(novo)
-        db.session.commit()
+        try:
+            db.session.add(novo)
+            db.session.commit()
 
-        flash("Produto cadastrado com sucesso!")
+            flash(
+                "Produto cadastrado com sucesso!",
+                "sucesso",
+            )
+
+        except Exception:
+            db.session.rollback()
+
+            flash(
+                "Não foi possível cadastrar o produto.",
+                "erro",
+            )
+
         return redirect(url_for("produtos"))
 
-    lista = Produto.query.order_by(Produto.nome).all()
+    lista = Produto.query.order_by(
+        Produto.nome
+    ).all()
 
     return render_template(
         "produtos.html",
@@ -549,85 +678,187 @@ def produtos():
     )
 
 
-@app.route("/editar_produto/<int:id>", methods=["POST"])
+@app.route(
+    "/editar_produto/<int:id>",
+    methods=["POST"],
+)
 def editar_produto(id):
     if not usuario_logado():
         return redirect(url_for("login"))
 
     produto = Produto.query.get_or_404(id)
 
-    produto.nome = request.form.get(
+    nome = request.form.get(
         "nome",
         produto.nome,
     ).strip()
 
-    produto.categoria = request.form.get(
+    categoria = request.form.get(
         "categoria",
-        produto.categoria,
+        produto.categoria or "",
     ).strip()
 
-    produto.preco_venda = converter_float(
+    tipo_produto = request.form.get(
+        "tipo_produto",
+        produto.tipo_produto or "Produzido",
+    ).strip()
+
+    finalidade = request.form.get(
+        "finalidade",
+        produto.finalidade or "Venda",
+    ).strip()
+
+    preco_venda = converter_float(
         request.form.get("preco_venda")
     )
 
-    produto.tipo_produto = request.form.get(
-        "tipo_produto",
-        produto.tipo_produto,
-    )
-
-    produto.finalidade = request.form.get(
-        "finalidade",
-        "Venda",
-    )
-
-    produto.custo_compra = converter_float(
+    custo_compra = converter_float(
         request.form.get("custo_compra")
     )
 
-    produto.estoque_produto = converter_float(
+    estoque_produto = converter_float(
         request.form.get("estoque_produto")
     )
 
-    db.session.commit()
+    rendimento_quantidade = converter_float(
+        request.form.get("rendimento_quantidade"),
+        produto.rendimento_quantidade or 1.0,
+    )
 
-    flash("Produto atualizado com sucesso!")
+    rendimento_unidade = request.form.get(
+        "rendimento_unidade",
+        produto.rendimento_unidade or "un",
+    ).strip()
+
+    if not nome or not categoria:
+        flash(
+            "Preencha o nome e a categoria do produto.",
+            "erro",
+        )
+        return redirect(url_for("produtos"))
+
+    unidades_validas = {
+        "un",
+        "kg",
+        "g",
+        "L",
+        "ml",
+    }
+
+    if rendimento_unidade not in unidades_validas:
+        rendimento_unidade = "un"
+
+    if tipo_produto == "Revenda":
+        rendimento_quantidade = 1.0
+        rendimento_unidade = "un"
+
+    else:
+        custo_compra = 0
+        estoque_produto = 0
+
+        if rendimento_quantidade <= 0:
+            flash(
+                "O rendimento do produto produzido deve ser maior que zero.",
+                "erro",
+            )
+            return redirect(url_for("produtos"))
+
+    if finalidade == "Preparo Interno":
+        preco_venda = 0
+
+    produto.nome = nome
+    produto.categoria = categoria
+    produto.preco_venda = preco_venda
+    produto.tipo_produto = tipo_produto
+    produto.finalidade = finalidade
+    produto.custo_compra = custo_compra
+    produto.estoque_produto = estoque_produto
+    produto.rendimento_quantidade = rendimento_quantidade
+    produto.rendimento_unidade = rendimento_unidade
+
+    try:
+        db.session.commit()
+
+        flash(
+            "Produto atualizado com sucesso!",
+            "sucesso",
+        )
+
+    except Exception:
+        db.session.rollback()
+
+        flash(
+            "Não foi possível atualizar o produto.",
+            "erro",
+        )
+
     return redirect(url_for("produtos"))
 
 
-@app.route("/excluir_produto/<int:id>", methods=["POST", "GET"])
+@app.route(
+    "/excluir_produto/<int:id>",
+    methods=["POST", "GET"],
+)
 def excluir_produto(id):
     if not usuario_logado():
         return redirect(url_for("login"))
 
     produto = Produto.query.get_or_404(id)
 
-    if getattr(produto, "fichas_como_base", None):
+    if getattr(
+        produto,
+        "fichas_como_base",
+        None,
+    ):
         flash(
             "Este produto não pode ser excluído porque está sendo usado "
-            "como preparo interno."
+            "como preparo interno.",
+            "erro",
         )
         return redirect(url_for("produtos"))
 
     if produto.ficha_itens:
         flash(
-            "Exclua primeiro os itens da ficha técnica deste produto."
+            "Exclua primeiro os itens da ficha técnica deste produto.",
+            "erro",
         )
         return redirect(url_for("produtos"))
 
-    if getattr(produto, "vendas", None):
+    if getattr(
+        produto,
+        "vendas",
+        None,
+    ):
         flash(
-            "Este produto não pode ser excluído porque possui vendas registradas."
+            "Este produto não pode ser excluído porque possui vendas registradas.",
+            "erro",
         )
         return redirect(url_for("produtos"))
 
-    db.session.delete(produto)
-    db.session.commit()
+    try:
+        db.session.delete(produto)
+        db.session.commit()
 
-    flash("Produto excluído com sucesso!")
+        flash(
+            "Produto excluído com sucesso!",
+            "sucesso",
+        )
+
+    except Exception:
+        db.session.rollback()
+
+        flash(
+            "Não foi possível excluir o produto.",
+            "erro",
+        )
+
     return redirect(url_for("produtos"))
 
 
-@app.route("/alterar_status_produto/<int:id>", methods=["POST", "GET"])
+@app.route(
+    "/alterar_status_produto/<int:id>",
+    methods=["POST", "GET"],
+)
 def alterar_status_produto(id):
     if not usuario_logado():
         return redirect(url_for("login"))
@@ -635,9 +866,22 @@ def alterar_status_produto(id):
     produto = Produto.query.get_or_404(id)
     produto.ativo = not produto.ativo
 
-    db.session.commit()
+    try:
+        db.session.commit()
 
-    flash("Status do produto atualizado!")
+        flash(
+            "Status do produto atualizado!",
+            "sucesso",
+        )
+
+    except Exception:
+        db.session.rollback()
+
+        flash(
+            "Não foi possível alterar o status do produto.",
+            "erro",
+        )
+
     return redirect(url_for("produtos"))
 
 
@@ -646,124 +890,389 @@ def ficha_tecnica():
     if not usuario_logado():
         return redirect(url_for("login"))
 
+    produto_selecionado_id = request.args.get(
+        "produto_id",
+        type=int
+    )
+
     if request.method == "POST":
-        produto_id = request.form.get("produto_id")
-        tipo_item = request.form.get("tipo_item")
+        produto_id = request.form.get(
+            "produto_id",
+            type=int
+        )
+
+        tipo_item = request.form.get(
+            "tipo_item",
+            ""
+        ).strip()
+
         quantidade = converter_float(
             request.form.get("quantidade")
         )
+
         unidade_utilizada = request.form.get(
             "unidade_utilizada",
-            "",
+            ""
         ).strip()
 
+        # =========================
+        # VALIDAÇÃO DO PRODUTO
+        # =========================
+
         if not produto_id:
-            flash("Selecione o produto da ficha técnica.")
-            return redirect(url_for("ficha_tecnica"))
+            flash(
+                "Selecione o produto da ficha técnica.",
+                "erro"
+            )
+            return redirect(
+                url_for("ficha_tecnica")
+            )
+
+        produto = Produto.query.get_or_404(
+            produto_id
+        )
+
+        # =========================
+        # VALIDAÇÃO DA QUANTIDADE
+        # =========================
 
         if quantidade <= 0:
-            flash("A quantidade deve ser maior que zero.")
-            return redirect(url_for("ficha_tecnica"))
+            flash(
+                "A quantidade deve ser maior que zero.",
+                "erro"
+            )
+            return redirect(
+                url_for(
+                    "ficha_tecnica",
+                    produto_id=produto_id
+                )
+            )
 
-        produto_id = int(produto_id)
-        Produto.query.get_or_404(produto_id)
+        # =========================
+        # VALIDAÇÃO DA UNIDADE
+        # =========================
+
+        unidades_permitidas = {
+            "g",
+            "kg",
+            "ml",
+            "L",
+            "un"
+        }
+
+        if unidade_utilizada not in unidades_permitidas:
+            flash(
+                "Selecione uma unidade de medida válida.",
+                "erro"
+            )
+            return redirect(
+                url_for(
+                    "ficha_tecnica",
+                    produto_id=produto_id
+                )
+            )
+
+        # =========================
+        # NOVO ITEM DA FICHA
+        # =========================
 
         item = FichaTecnica(
             produto_id=produto_id,
             quantidade=quantidade,
-            unidade_utilizada=unidade_utilizada,
+            unidade_utilizada=unidade_utilizada
         )
 
+        # =========================
+        # COMPONENTE DO TIPO INSUMO
+        # =========================
+
         if tipo_item == "insumo":
-            insumo_id = request.form.get("insumo_id")
+            insumo_id = request.form.get(
+                "insumo_id",
+                type=int
+            )
 
             if not insumo_id:
-                flash("Selecione um insumo.")
-                return redirect(url_for("ficha_tecnica"))
+                flash(
+                    "Selecione um insumo.",
+                    "erro"
+                )
+                return redirect(
+                    url_for(
+                        "ficha_tecnica",
+                        produto_id=produto_id
+                    )
+                )
 
-            item.insumo_id = int(insumo_id)
+            insumo = Insumo.query.get_or_404(
+                insumo_id
+            )
+
+            # Impede o mesmo insumo de ser
+            # adicionado duas vezes à ficha
+            item_existente = FichaTecnica.query.filter_by(
+                produto_id=produto_id,
+                insumo_id=insumo_id
+            ).first()
+
+            if item_existente:
+                flash(
+                    f"O insumo '{insumo.nome}' já está "
+                    f"cadastrado na ficha de "
+                    f"'{produto.nome}'.",
+                    "erro"
+                )
+                return redirect(
+                    url_for(
+                        "ficha_tecnica",
+                        produto_id=produto_id
+                    )
+                )
+
+            item.insumo_id = insumo_id
             item.produto_base_id = None
+
+        # =============================
+        # COMPONENTE: PREPARO INTERNO
+        # =============================
 
         elif tipo_item == "produto":
             produto_base_id = request.form.get(
-                "produto_base_id"
+                "produto_base_id",
+                type=int
             )
 
             if not produto_base_id:
-                flash("Selecione um produto-base.")
-                return redirect(url_for("ficha_tecnica"))
-
-            produto_base_id = int(produto_base_id)
+                flash(
+                    "Selecione um preparo interno.",
+                    "erro"
+                )
+                return redirect(
+                    url_for(
+                        "ficha_tecnica",
+                        produto_id=produto_id
+                    )
+                )
 
             produto_base = Produto.query.get_or_404(
                 produto_base_id
             )
 
-            if produto_base.tipo_produto != "Produzido":
+            # Impede o produto de usar ele mesmo
+            if produto_base.id == produto.id:
                 flash(
-                    "Somente produtos produzidos podem ser usados como base."
+                    "Um produto não pode utilizar a si "
+                    "mesmo como componente.",
+                    "erro"
                 )
-                return redirect(url_for("ficha_tecnica"))
+                return redirect(
+                    url_for(
+                        "ficha_tecnica",
+                        produto_id=produto_id
+                    )
+                )
 
-            if ficha_cria_ciclo(produto_id, produto_base_id):
+            # Somente preparos internos produzidos
+            # podem ser usados como produto-base
+            if (
+                produto_base.tipo_produto != "Produzido"
+                or produto_base.finalidade
+                != "Preparo Interno"
+            ):
                 flash(
-                    "Essa inclusão criaria uma referência circular "
-                    "entre as fichas técnicas."
+                    "Somente preparos internos produzidos "
+                    "pela empresa podem ser utilizados "
+                    "como base.",
+                    "erro"
                 )
-                return redirect(url_for("ficha_tecnica"))
+                return redirect(
+                    url_for(
+                        "ficha_tecnica",
+                        produto_id=produto_id
+                    )
+                )
+
+            # Impede o mesmo preparo interno de ser
+            # adicionado duas vezes
+            item_existente = FichaTecnica.query.filter_by(
+                produto_id=produto_id,
+                produto_base_id=produto_base_id
+            ).first()
+
+            if item_existente:
+                flash(
+                    f"O preparo interno "
+                    f"'{produto_base.nome}' já está "
+                    f"cadastrado na ficha de "
+                    f"'{produto.nome}'.",
+                    "erro"
+                )
+                return redirect(
+                    url_for(
+                        "ficha_tecnica",
+                        produto_id=produto_id
+                    )
+                )
+
+            # Impede referências circulares
+            if ficha_cria_ciclo(
+                produto_id,
+                produto_base_id
+            ):
+                flash(
+                    "Essa inclusão criaria uma "
+                    "referência circular entre as "
+                    "fichas técnicas.",
+                    "erro"
+                )
+                return redirect(
+                    url_for(
+                        "ficha_tecnica",
+                        produto_id=produto_id
+                    )
+                )
 
             item.insumo_id = None
             item.produto_base_id = produto_base_id
 
         else:
-            flash("Selecione o tipo de item.")
-            return redirect(url_for("ficha_tecnica"))
+            flash(
+                "Selecione se o componente é um "
+                "insumo ou um preparo interno.",
+                "erro"
+            )
+            return redirect(
+                url_for(
+                    "ficha_tecnica",
+                    produto_id=produto_id
+                )
+            )
 
-        db.session.add(item)
-        db.session.commit()
+        # =========================
+        # SALVAMENTO
+        # =========================
 
-        flash("Item adicionado à ficha técnica com sucesso!")
-        return redirect(url_for("ficha_tecnica"))
+        try:
+            db.session.add(item)
+            db.session.commit()
+
+            flash(
+                "Componente adicionado à ficha "
+                "técnica com sucesso!",
+                "sucesso"
+            )
+
+        except Exception:
+            db.session.rollback()
+
+            flash(
+                "Não foi possível adicionar o "
+                "componente à ficha técnica.",
+                "erro"
+            )
+
+        return redirect(
+            url_for(
+                "ficha_tecnica",
+                produto_id=produto_id
+            )
+        )
+
+    # =========================
+    # LISTA DE PRODUTOS
+    # =========================
 
     produtos_lista = Produto.query.filter_by(
         ativo=True
-    ).order_by(Produto.nome).all()
+    ).order_by(
+        Produto.nome
+    ).all()
+
+    # =========================
+    # PREPAROS INTERNOS
+    # =========================
 
     produtos_base = Produto.query.filter_by(
         tipo_produto="Produzido",
         finalidade="Preparo Interno",
-        ativo=True,
-    ).order_by(Produto.nome).all()
+        ativo=True
+    ).order_by(
+        Produto.nome
+    ).all()
+
+    # =========================
+    # LISTA DE INSUMOS
+    # =========================
 
     insumos_lista = Insumo.query.order_by(
         Insumo.nome
     ).all()
 
-    itens = FichaTecnica.query.order_by(
-        FichaTecnica.produto_id
-    ).all()
+    produto_selecionado = None
+    itens = []
+
+    # Mostra somente a ficha do
+    # produto selecionado
+    if produto_selecionado_id:
+        produto_selecionado = (
+            Produto.query.get_or_404(
+                produto_selecionado_id
+            )
+        )
+
+        itens = FichaTecnica.query.filter_by(
+            produto_id=produto_selecionado_id
+        ).order_by(
+            FichaTecnica.id
+        ).all()
 
     return render_template(
         "ficha_tecnica.html",
         produtos=produtos_lista,
         produtos_base=produtos_base,
         insumos=insumos_lista,
-        itens=itens,
+        produto_selecionado=produto_selecionado,
+        produto_selecionado_id=produto_selecionado_id,
+        itens=itens
     )
 
 
-@app.route("/excluir_item_ficha/<int:id>", methods=["POST", "GET"])
+@app.route(
+    "/excluir_item_ficha/<int:id>",
+    methods=["POST"]
+)
 def excluir_item_ficha(id):
     if not usuario_logado():
         return redirect(url_for("login"))
 
     item = FichaTecnica.query.get_or_404(id)
 
-    db.session.delete(item)
-    db.session.commit()
+    produto_id = item.produto_id
 
-    flash("Item removido da ficha técnica.")
-    return redirect(url_for("ficha_tecnica"))
+    try:
+        db.session.delete(item)
+        db.session.commit()
+
+        flash(
+            "Componente removido da ficha técnica.",
+            "sucesso"
+        )
+
+    except Exception:
+        db.session.rollback()
+
+        flash(
+            "Não foi possível remover o componente "
+            "da ficha técnica.",
+            "erro"
+        )
+
+    return redirect(
+        url_for(
+            "ficha_tecnica",
+            produto_id=produto_id
+        )
+    )
 
 
 @app.route("/vendas", methods=["GET", "POST"])

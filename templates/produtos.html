@@ -2,220 +2,1062 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Produtos - ERP Restaurante</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
 </head>
+
 <body>
 
 <div class="layout">
 
     <aside class="sidebar">
+
         <div class="brand">
             <div class="logo-menu">🔥</div>
             <h2>ERP Restaurante</h2>
         </div>
 
         <nav>
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('insumos') }}">Insumos</a>
-            <a class="ativo" href="{{ url_for('produtos') }}">Produtos</a>
-            <a href="{{ url_for('ficha_tecnica') }}">Ficha Técnica</a>
-            <a href="{{ url_for('vendas') }}">Vendas</a>
-            <a href="{{ url_for('financeiro') }}">Caixa</a>
-            <a href="{{ url_for('relatorios') }}">Relatórios</a>
-            <a href="{{ url_for('configuracoes') }}">Configurações</a>
-            <a href="{{ url_for('logout') }}">Sair</a>
+            <a href="{{ url_for('dashboard') }}">
+                Dashboard
+            </a>
+
+            <a href="{{ url_for('insumos') }}">
+                Insumos
+            </a>
+
+            <a
+                class="ativo"
+                href="{{ url_for('produtos') }}"
+            >
+                Produtos
+            </a>
+
+            <a href="{{ url_for('ficha_tecnica') }}">
+                Ficha Técnica
+            </a>
+
+            <a href="{{ url_for('vendas') }}">
+                Vendas
+            </a>
+
+            <a href="{{ url_for('financeiro') }}">
+                Caixa
+            </a>
+
+            <a href="{{ url_for('relatorios') }}">
+                Relatórios
+            </a>
+
+            <a href="{{ url_for('configuracoes') }}">
+                Configurações
+            </a>
+
+            <a href="{{ url_for('logout') }}">
+                Sair
+            </a>
         </nav>
+
     </aside>
 
     <main class="conteudo">
 
         <header class="topo">
+
             <div>
                 <h1>Cadastro de Produtos</h1>
-                <p>Cadastre produtos produzidos e produtos de revenda.</p>
+
+                <p>
+                    Cadastre produtos de venda, preparos internos
+                    e produtos de revenda.
+                </p>
             </div>
+
         </header>
 
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+            {% if mensagens %}
+
+                {% for categoria, mensagem in mensagens %}
+                    <div class="flash {{ categoria }}">
+                        {{ mensagem }}
+                    </div>
+                {% endfor %}
+
+            {% endif %}
+        {% endwith %}
+
+        <!-- ========================================= -->
+        <!-- CADASTRO DE NOVO PRODUTO                  -->
+        <!-- ========================================= -->
+
         <section class="painel">
+
             <h2>Novo Produto</h2>
 
-            <form method="POST" class="form-grid produto-form">
+            <form
+                method="POST"
+                class="form-grid produto-form"
+                id="formNovoProduto"
+            >
 
-                <input type="text" name="nome" placeholder="Nome do produto" required>
+                <input
+                    type="text"
+                    name="nome"
+                    placeholder="Nome do produto"
+                    required
+                >
 
                 <select name="categoria" required>
-                    <option value="">Categoria</option>
-                    <option value="Espetos">Espetos</option>
-                    <option value="Bebidas">Bebidas</option>
-                    <option value="Acompanhamentos">Acompanhamentos</option>
-                    <option value="Combos">Combos</option>
-                    <option value="Outros">Outros</option>
+
+                    <option value="">
+                        Categoria
+                    </option>
+
+                    <option value="Espetos">
+                        Espetos
+                    </option>
+
+                    <option value="Bebidas">
+                        Bebidas
+                    </option>
+
+                    <option value="Acompanhamentos">
+                        Acompanhamentos
+                    </option>
+
+                    <option value="Combos">
+                        Combos
+                    </option>
+
+                    <option value="Preparos">
+                        Preparos
+                    </option>
+
+                    <option value="Outros">
+                        Outros
+                    </option>
+
                 </select>
 
-                <input type="number" step="0.01" name="preco_venda" placeholder="Preço de venda R$" required>
+                <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    name="preco_venda"
+                    placeholder="Preço de venda R$"
+                    value="0"
+                >
 
-                <select name="tipo_produto" required>
-                <option value="Produzido">Produto Produzido</option>
-                <option value="Revenda">Produto de Revenda</option>
+                <select
+                    name="tipo_produto"
+                    id="novo_tipo_produto"
+                    required
+                    onchange="atualizarCamposNovoProduto()"
+                >
+
+                    <option value="Produzido">
+                        Produto Produzido
+                    </option>
+
+                    <option value="Revenda">
+                        Produto de Revenda
+                    </option>
+
                 </select>
 
-                <select name="finalidade" required>
-                <option value="Venda">Produto para Venda</option>
-                <option value="Preparo Interno">Preparo Interno (Molho, Recheio, Massa, etc.)</option>
+                <select
+                    name="finalidade"
+                    id="nova_finalidade"
+                    required
+                    onchange="atualizarCamposNovoProduto()"
+                >
+
+                    <option value="Venda">
+                        Produto para Venda
+                    </option>
+
+                    <option value="Preparo Interno">
+                        Preparo Interno
+                    </option>
+
                 </select>
 
-                <input type="number" step="0.01" name="custo_compra" placeholder="Custo de compra R$">
+                <div
+                    id="novo_bloco_custo_compra"
+                    class="campo-produto"
+                >
 
-                <input type="number" step="0.01" name="estoque_produto" placeholder="Estoque inicial">
+                    <label for="novo_custo_compra">
+                        Custo de compra
+                    </label>
 
-                <button type="submit">Cadastrar Produto</button>
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        name="custo_compra"
+                        id="novo_custo_compra"
+                        placeholder="Custo de compra R$"
+                        value="0"
+                    >
+
+                </div>
+
+                <div
+                    id="novo_bloco_estoque"
+                    class="campo-produto"
+                >
+
+                    <label for="novo_estoque_produto">
+                        Estoque inicial
+                    </label>
+
+                    <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        name="estoque_produto"
+                        id="novo_estoque_produto"
+                        placeholder="Estoque inicial"
+                        value="0"
+                    >
+
+                </div>
+
+                <div
+                    id="novo_bloco_rendimento"
+                    class="bloco-rendimento"
+                >
+
+                    <div class="campo-produto">
+
+                        <label for="novo_rendimento_quantidade">
+                            Quantidade produzida pela receita
+                        </label>
+
+                        <input
+                            type="number"
+                            step="0.001"
+                            min="0.001"
+                            name="rendimento_quantidade"
+                            id="novo_rendimento_quantidade"
+                            placeholder="Ex.: 2"
+                            value="1"
+                        >
+
+                    </div>
+
+                    <div class="campo-produto">
+
+                        <label for="novo_rendimento_unidade">
+                            Unidade do rendimento
+                        </label>
+
+                        <select
+                            name="rendimento_unidade"
+                            id="novo_rendimento_unidade"
+                        >
+
+                            <option value="un">
+                                Unidade
+                            </option>
+
+                            <option value="kg">
+                                Quilograma (kg)
+                            </option>
+
+                            <option value="g">
+                                Grama (g)
+                            </option>
+
+                            <option value="L">
+                                Litro (L)
+                            </option>
+
+                            <option value="ml">
+                                Mililitro (ml)
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                    <p class="ajuda-campo">
+                        Informe quanto a receita completa produz.
+                        Exemplo: vinagrete rende 2 kg.
+                    </p>
+
+                </div>
+
+                <button type="submit">
+                    Cadastrar Produto
+                </button>
 
             </form>
+
         </section>
 
+        <!-- ========================================= -->
+        <!-- PRODUTOS CADASTRADOS                      -->
+        <!-- ========================================= -->
+
         <section class="painel">
-            <h2>Produtos Cadastrados</h2>
+
+            <div class="cabecalho-painel">
+
+                <div>
+                    <h2>Produtos Cadastrados</h2>
+
+                    <p>
+                        Consulte custos, rendimento, margem e situação
+                        dos produtos.
+                    </p>
+                </div>
+
+                <div class="campo-busca">
+
+                    <input
+                        type="search"
+                        id="buscaProduto"
+                        placeholder="Pesquisar produto..."
+                        oninput="filtrarProdutos()"
+                    >
+
+                </div>
+
+            </div>
 
             <div class="tabela-container">
-                <table>
+
+                <table id="tabelaProdutos">
+
                     <thead>
+
                         <tr>
                             <th>Produto</th>
+                            <th>Finalidade</th>
                             <th>Tipo</th>
                             <th>Categoria</th>
+                            <th>Rendimento</th>
                             <th>Preço de Venda</th>
                             <th>Custo</th>
                             <th>Estoque Revenda</th>
-                            <th>Margem de Contribuição</th>
+                            <th>Margem</th>
                             <th>% Margem</th>
                             <th>Preço Sugerido</th>
                             <th>Situação</th>
                             <th>Status</th>
                             <th>Ações</th>
                         </tr>
+
                     </thead>
 
                     <tbody>
+
                         {% for p in produtos %}
-<tr 
-    data-id="{{ p.id }}"
-    data-nome="{{ p.nome }}"
-    data-categoria="{{ p.categoria }}"
-    data-preco="{{ p.preco_venda }}"
-    data-tipo="{{ p.tipo_produto }}"
-    data-custo="{{ p.custo_compra }}"
-    data-estoque="{{ p.estoque_produto }}"
-    data-finalidade="{{ p.finalidade }}"
->
-                            <td>{{ p.nome }}</td>
-                            <td>{{ p.tipo_produto }}</td>
-                            <td>{{ p.categoria }}</td>
-                            <td>R$ {{ "%.2f"|format(p.preco_venda) }}</td>
-                            <td>R$ {{ "%.2f"|format(p.custo_materia_prima()) }}</td>
+
+                        <tr
+                            data-id="{{ p.id }}"
+                            data-nome="{{ p.nome }}"
+                            data-categoria="{{ p.categoria or '' }}"
+                            data-preco="{{ p.preco_venda or 0 }}"
+                            data-tipo="{{ p.tipo_produto or 'Produzido' }}"
+                            data-custo="{{ p.custo_compra or 0 }}"
+                            data-estoque="{{ p.estoque_produto or 0 }}"
+                            data-finalidade="{{ p.finalidade or 'Venda' }}"
+                            data-rendimento-quantidade="{{ p.rendimento_quantidade or 1 }}"
+                            data-rendimento-unidade="{{ p.rendimento_unidade or 'un' }}"
+                        >
+
+                            <td>
+                                <strong>{{ p.nome }}</strong>
+                            </td>
+
+                            <td>
+
+                                {% if p.finalidade == "Preparo Interno" %}
+
+                                    <span class="status atencao">
+                                        Preparo Interno
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="status normal">
+                                        Venda
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+                                {{ p.tipo_produto }}
+                            </td>
+
+                            <td>
+                                {{ p.categoria or "-" }}
+                            </td>
+
+                            <td>
+
+                                {% if p.tipo_produto == "Produzido" %}
+
+                                    {{ "%.3f"|format(
+                                        p.rendimento_quantidade or 1
+                                    )|replace(".000", "") }}
+
+                                    {{ p.rendimento_unidade or "un" }}
+
+                                {% else %}
+
+                                    -
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+                                R$
+                                {{ "%.2f"|format(p.preco_venda or 0) }}
+                            </td>
+
+                            <td>
+                                R$
+                                {{ "%.2f"|format(
+                                    p.custo_materia_prima()
+                                ) }}
+                            </td>
 
                             {% if p.tipo_produto == "Revenda" %}
-                                <td>{{ "%.2f"|format(p.estoque_produto) }}</td>
+
+                                <td>
+                                    {{ "%.2f"|format(
+                                        p.estoque_produto or 0
+                                    ) }}
+                                </td>
+
                             {% else %}
+
                                 <td>-</td>
-                            {% endif %}
 
-                            <td>R$ {{ "%.2f"|format(p.margem_contribuicao()) }}</td>
-                            <td>{{ "%.1f"|format(p.percentual_margem()) }}%</td>
-                            <td>R$ {{ "%.2f"|format(p.preco_sugerido()) }}</td>
-
-                            {% if p.situacao_preco() == "Revisar" %}
-                                <td><span class="status atencao">Revisar</span></td>
-                            {% elif p.situacao_preco() == "Sem custo" %}
-                                <td><span class="status alerta">Sem custo</span></td>
-                            {% else %}
-                                <td><span class="status normal">Adequado</span></td>
-                            {% endif %}
-
-                            {% if p.ativo %}
-                                <td><span class="status normal">Ativo</span></td>
-                            {% else %}
-                                <td><span class="status alerta">Inativo</span></td>
                             {% endif %}
 
                             <td>
-    <button class="btn-pequeno" type="button" onclick="abrirEditarProduto('{{ p.id }}')">
-        ✏️ Editar
-    </button>
+                                R$
+                                {{ "%.2f"|format(
+                                    p.margem_contribuicao()
+                                ) }}
+                            </td>
 
-    <a class="btn-excluir" href="{{ url_for('excluir_produto', id=p.id) }}" onclick="return confirm('Deseja realmente excluir este produto?')">
-        🗑️ Excluir
-    </a>
-</td>
+                            <td>
+                                {{ "%.1f"|format(
+                                    p.percentual_margem()
+                                ) }}%
+                            </td>
+
+                            <td>
+                                R$
+                                {{ "%.2f"|format(
+                                    p.preco_sugerido()
+                                ) }}
+                            </td>
+
+                            {% if p.situacao_preco() == "Revisar" %}
+
+                                <td>
+                                    <span class="status atencao">
+                                        Revisar
+                                    </span>
+                                </td>
+
+                            {% elif p.situacao_preco() == "Sem custo" %}
+
+                                <td>
+                                    <span class="status alerta">
+                                        Sem custo
+                                    </span>
+                                </td>
+
+                            {% else %}
+
+                                <td>
+                                    <span class="status normal">
+                                        Adequado
+                                    </span>
+                                </td>
+
+                            {% endif %}
+
+                            {% if p.ativo %}
+
+                                <td>
+                                    <span class="status normal">
+                                        Ativo
+                                    </span>
+                                </td>
+
+                            {% else %}
+
+                                <td>
+                                    <span class="status alerta">
+                                        Inativo
+                                    </span>
+                                </td>
+
+                            {% endif %}
+
+                            <td>
+
+                                <div class="acoes-tabela">
+
+                                    <button
+                                        class="btn-pequeno"
+                                        type="button"
+                                        onclick="abrirEditarProduto('{{ p.id }}')"
+                                    >
+                                        ✏️ Editar
+                                    </button>
+
+                                    <a
+                                        class="btn-excluir"
+                                        href="{{ url_for(
+                                            'excluir_produto',
+                                            id=p.id
+                                        ) }}"
+                                        onclick="
+                                            return confirm(
+                                                'Deseja realmente excluir este produto?'
+                                            )
+                                        "
+                                    >
+                                        🗑️ Excluir
+                                    </a>
+
+                                </div>
+
+                            </td>
+
                         </tr>
+
                         {% else %}
+
                         <tr>
-                            <td colspan="12" class="vazio">Nenhum produto cadastrado ainda.</td>
+                            <td colspan="14" class="vazio">
+                                Nenhum produto cadastrado ainda.
+                            </td>
                         </tr>
+
                         {% endfor %}
+
                     </tbody>
+
                 </table>
+
             </div>
+
         </section>
 
     </main>
 
 </div>
+
+<!-- ========================================= -->
+<!-- MODAL DE EDIÇÃO                           -->
+<!-- ========================================= -->
+
 <div id="modalEditarProduto" class="modal">
+
     <div class="modal-conteudo">
-        <h2>Editar Produto</h2>
 
-        <form id="formEditarProduto" method="POST" class="form-grid">
-            <input type="text" name="nome" id="edit_nome" placeholder="Nome" required>
+        <div class="modal-cabecalho">
 
-            <select name="categoria" id="edit_categoria" required>
-                <option value="Espetos">Espetos</option>
-                <option value="Bebidas">Bebidas</option>
-                <option value="Acompanhamentos">Acompanhamentos</option>
-                <option value="Combos">Combos</option>
-                <option value="Outros">Outros</option>
+            <div>
+                <h2>Editar Produto</h2>
+
+                <p>
+                    Atualize os dados e o rendimento do produto.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="modal-fechar"
+                onclick="fecharEditarProduto()"
+                aria-label="Fechar"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <form
+            id="formEditarProduto"
+            method="POST"
+            class="form-grid"
+        >
+
+            <input
+                type="text"
+                name="nome"
+                id="edit_nome"
+                placeholder="Nome"
+                required
+            >
+
+            <select
+                name="categoria"
+                id="edit_categoria"
+                required
+            >
+
+                <option value="Espetos">
+                    Espetos
+                </option>
+
+                <option value="Bebidas">
+                    Bebidas
+                </option>
+
+                <option value="Acompanhamentos">
+                    Acompanhamentos
+                </option>
+
+                <option value="Combos">
+                    Combos
+                </option>
+
+                <option value="Preparos">
+                    Preparos
+                </option>
+
+                <option value="Outros">
+                    Outros
+                </option>
+
             </select>
 
-            <input type="number" step="0.01" name="preco_venda" id="edit_preco" placeholder="Preço de venda" required>
+            <input
+                type="number"
+                step="0.01"
+                min="0"
+                name="preco_venda"
+                id="edit_preco"
+                placeholder="Preço de venda"
+            >
 
-            <select name="tipo_produto" id="edit_tipo" required>
-                <option value="Produzido">Produto Produzido</option>
-                <option value="Revenda">Produto de Revenda</option>
+            <select
+                name="tipo_produto"
+                id="edit_tipo"
+                required
+                onchange="atualizarCamposEdicao()"
+            >
+
+                <option value="Produzido">
+                    Produto Produzido
+                </option>
+
+                <option value="Revenda">
+                    Produto de Revenda
+                </option>
+
             </select>
 
-            <select name="finalidade" id="edit_finalidade" required>
-                <option value="Venda">Produto para Venda</option>
-                <option value="Preparo Interno">Preparo Interno</option>
+            <select
+                name="finalidade"
+                id="edit_finalidade"
+                required
+                onchange="atualizarCamposEdicao()"
+            >
+
+                <option value="Venda">
+                    Produto para Venda
+                </option>
+
+                <option value="Preparo Interno">
+                    Preparo Interno
+                </option>
+
             </select>
 
-            <input type="number" step="0.01" name="custo_compra" id="edit_custo" placeholder="Custo de compra">
-            <input type="number" step="0.01" name="estoque_produto" id="edit_estoque" placeholder="Estoque">
+            <div
+                id="edit_bloco_custo_compra"
+                class="campo-produto"
+            >
 
-            <button type="submit">Salvar Alterações</button>
-            <button type="button" class="btn-cancelar" onclick="fecharEditarProduto()">Cancelar</button>
+                <label for="edit_custo">
+                    Custo de compra
+                </label>
+
+                <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    name="custo_compra"
+                    id="edit_custo"
+                    placeholder="Custo de compra"
+                >
+
+            </div>
+
+            <div
+                id="edit_bloco_estoque"
+                class="campo-produto"
+            >
+
+                <label for="edit_estoque">
+                    Estoque
+                </label>
+
+                <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    name="estoque_produto"
+                    id="edit_estoque"
+                    placeholder="Estoque"
+                >
+
+            </div>
+
+            <div
+                id="edit_bloco_rendimento"
+                class="bloco-rendimento"
+            >
+
+                <div class="campo-produto">
+
+                    <label for="edit_rendimento_quantidade">
+                        Quantidade produzida pela receita
+                    </label>
+
+                    <input
+                        type="number"
+                        step="0.001"
+                        min="0.001"
+                        name="rendimento_quantidade"
+                        id="edit_rendimento_quantidade"
+                        placeholder="Ex.: 2"
+                    >
+
+                </div>
+
+                <div class="campo-produto">
+
+                    <label for="edit_rendimento_unidade">
+                        Unidade do rendimento
+                    </label>
+
+                    <select
+                        name="rendimento_unidade"
+                        id="edit_rendimento_unidade"
+                    >
+
+                        <option value="un">
+                            Unidade
+                        </option>
+
+                        <option value="kg">
+                            Quilograma (kg)
+                        </option>
+
+                        <option value="g">
+                            Grama (g)
+                        </option>
+
+                        <option value="L">
+                            Litro (L)
+                        </option>
+
+                        <option value="ml">
+                            Mililitro (ml)
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <p class="ajuda-campo">
+                    Exemplo: a receita inteira de vinagrete rende 2 kg.
+                </p>
+
+            </div>
+
+            <div class="acoes-modal">
+
+                <button type="submit">
+                    Salvar Alterações
+                </button>
+
+                <button
+                    type="button"
+                    class="btn-cancelar"
+                    onclick="fecharEditarProduto()"
+                >
+                    Cancelar
+                </button>
+
+            </div>
+
         </form>
+
     </div>
+
 </div>
 
 <script>
-function abrirEditarProduto(id) {
-    const linha = document.querySelector(`tr[data-id="${id}"]`);
+    function atualizarCamposNovoProduto() {
+        const tipo = document.getElementById(
+            "novo_tipo_produto"
+        ).value;
 
-    document.getElementById("edit_nome").value = linha.dataset.nome;
-    document.getElementById("edit_categoria").value = linha.dataset.categoria;
-    document.getElementById("edit_preco").value = linha.dataset.preco;
-    document.getElementById("edit_tipo").value = linha.dataset.tipo;
-    document.getElementById("edit_finalidade").value = linha.dataset.finalidade;
-    document.getElementById("edit_custo").value = linha.dataset.custo;
-    document.getElementById("edit_estoque").value = linha.dataset.estoque;
+        const finalidade = document.getElementById(
+            "nova_finalidade"
+        ).value;
 
-    document.getElementById("formEditarProduto").action = `/editar_produto/${id}`;
-    document.getElementById("modalEditarProduto").style.display = "flex";
-}
+        const blocoCusto = document.getElementById(
+            "novo_bloco_custo_compra"
+        );
 
-function fecharEditarProduto() {
-    document.getElementById("modalEditarProduto").style.display = "none";
-}
+        const blocoEstoque = document.getElementById(
+            "novo_bloco_estoque"
+        );
+
+        const blocoRendimento = document.getElementById(
+            "novo_bloco_rendimento"
+        );
+
+        const campoRendimento = document.getElementById(
+            "novo_rendimento_quantidade"
+        );
+
+        const unidadeRendimento = document.getElementById(
+            "novo_rendimento_unidade"
+        );
+
+        const precoVenda = document.querySelector(
+            '#formNovoProduto input[name="preco_venda"]'
+        );
+
+        if (tipo === "Revenda") {
+            blocoCusto.style.display = "block";
+            blocoEstoque.style.display = "block";
+            blocoRendimento.style.display = "none";
+
+            campoRendimento.required = false;
+            campoRendimento.value = "1";
+            unidadeRendimento.value = "un";
+        } else {
+            blocoCusto.style.display = "none";
+            blocoEstoque.style.display = "none";
+            blocoRendimento.style.display = "grid";
+
+            campoRendimento.required = true;
+        }
+
+        if (finalidade === "Preparo Interno") {
+            precoVenda.required = false;
+
+            if (!precoVenda.value) {
+                precoVenda.value = "0";
+            }
+        } else {
+            precoVenda.required = true;
+        }
+    }
+
+
+    function abrirEditarProduto(id) {
+        const linha = document.querySelector(
+            `tr[data-id="${id}"]`
+        );
+
+        if (!linha) {
+            return;
+        }
+
+        document.getElementById(
+            "edit_nome"
+        ).value = linha.dataset.nome || "";
+
+        document.getElementById(
+            "edit_categoria"
+        ).value = linha.dataset.categoria || "Outros";
+
+        document.getElementById(
+            "edit_preco"
+        ).value = linha.dataset.preco || "0";
+
+        document.getElementById(
+            "edit_tipo"
+        ).value = linha.dataset.tipo || "Produzido";
+
+        document.getElementById(
+            "edit_finalidade"
+        ).value = linha.dataset.finalidade || "Venda";
+
+        document.getElementById(
+            "edit_custo"
+        ).value = linha.dataset.custo || "0";
+
+        document.getElementById(
+            "edit_estoque"
+        ).value = linha.dataset.estoque || "0";
+
+        document.getElementById(
+            "edit_rendimento_quantidade"
+        ).value = linha.dataset.rendimentoQuantidade || "1";
+
+        document.getElementById(
+            "edit_rendimento_unidade"
+        ).value = linha.dataset.rendimentoUnidade || "un";
+
+        document.getElementById(
+            "formEditarProduto"
+        ).action = `/editar_produto/${id}`;
+
+        atualizarCamposEdicao();
+
+        document.getElementById(
+            "modalEditarProduto"
+        ).style.display = "flex";
+    }
+
+
+    function atualizarCamposEdicao() {
+        const tipo = document.getElementById(
+            "edit_tipo"
+        ).value;
+
+        const finalidade = document.getElementById(
+            "edit_finalidade"
+        ).value;
+
+        const blocoCusto = document.getElementById(
+            "edit_bloco_custo_compra"
+        );
+
+        const blocoEstoque = document.getElementById(
+            "edit_bloco_estoque"
+        );
+
+        const blocoRendimento = document.getElementById(
+            "edit_bloco_rendimento"
+        );
+
+        const campoRendimento = document.getElementById(
+            "edit_rendimento_quantidade"
+        );
+
+        const unidadeRendimento = document.getElementById(
+            "edit_rendimento_unidade"
+        );
+
+        const precoVenda = document.getElementById(
+            "edit_preco"
+        );
+
+        if (tipo === "Revenda") {
+            blocoCusto.style.display = "block";
+            blocoEstoque.style.display = "block";
+            blocoRendimento.style.display = "none";
+
+            campoRendimento.required = false;
+
+            if (!campoRendimento.value) {
+                campoRendimento.value = "1";
+            }
+
+            unidadeRendimento.value = "un";
+        } else {
+            blocoCusto.style.display = "none";
+            blocoEstoque.style.display = "none";
+            blocoRendimento.style.display = "grid";
+
+            campoRendimento.required = true;
+        }
+
+        if (finalidade === "Preparo Interno") {
+            precoVenda.required = false;
+        } else {
+            precoVenda.required = true;
+        }
+    }
+
+
+    function fecharEditarProduto() {
+        document.getElementById(
+            "modalEditarProduto"
+        ).style.display = "none";
+    }
+
+
+    function filtrarProdutos() {
+        const termo = document.getElementById(
+            "buscaProduto"
+        ).value.toLowerCase().trim();
+
+        const linhas = document.querySelectorAll(
+            "#tabelaProdutos tbody tr[data-id]"
+        );
+
+        linhas.forEach(function(linha) {
+            const nome = (
+                linha.dataset.nome || ""
+            ).toLowerCase();
+
+            const categoria = (
+                linha.dataset.categoria || ""
+            ).toLowerCase();
+
+            const finalidade = (
+                linha.dataset.finalidade || ""
+            ).toLowerCase();
+
+            const corresponde =
+                nome.includes(termo) ||
+                categoria.includes(termo) ||
+                finalidade.includes(termo);
+
+            linha.style.display = corresponde
+                ? ""
+                : "none";
+        });
+    }
+
+
+    document
+        .getElementById("modalEditarProduto")
+        .addEventListener("click", function(event) {
+            if (event.target === this) {
+                fecharEditarProduto();
+            }
+        });
+
+
+    document.addEventListener(
+        "keydown",
+        function(event) {
+            if (event.key === "Escape") {
+                fecharEditarProduto();
+            }
+        }
+    );
+
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        function() {
+            atualizarCamposNovoProduto();
+        }
+    );
 </script>
 
 </body>
