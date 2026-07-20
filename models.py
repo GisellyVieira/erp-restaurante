@@ -200,6 +200,10 @@ class MovimentacaoEstoque(db.Model):
 # PRODUTO
 # =========================================================
 
+# =========================================================
+# PRODUTO
+# =========================================================
+
 class Produto(db.Model):
     id = db.Column(
         db.Integer,
@@ -247,7 +251,7 @@ class Produto(db.Model):
     )
 
     # Rendimento total da receita.
-    # Exemplo: vinagrete rende 2 kg.
+    # Exemplo: o vinagrete rende 2 kg.
     rendimento_quantidade = db.Column(
         db.Float,
         nullable=True,
@@ -260,6 +264,7 @@ class Produto(db.Model):
         default="un"
     )
 
+    # Itens usados para produzir este produto.
     ficha_itens = db.relationship(
         "FichaTecnica",
         foreign_keys="FichaTecnica.produto_id",
@@ -267,12 +272,15 @@ class Produto(db.Model):
         cascade="all, delete-orphan"
     )
 
+    # Fichas em que este produto aparece
+    # como preparo interno.
     fichas_como_base = db.relationship(
         "FichaTecnica",
         foreign_keys="FichaTecnica.produto_base_id",
         back_populates="produto_base"
     )
 
+    # Vendas registradas deste produto.
     vendas = db.relationship(
         "Venda",
         back_populates="produto"
@@ -281,42 +289,49 @@ class Produto(db.Model):
     def possui_ficha_tecnica(self):
         return len(self.ficha_itens) > 0
 
-    def custo_materia_prima(self, produtos_visitados=None):
+    def custo_materia_prima(
+        self,
+        produtos_visitados=None
+    ):
         """
-        Retorna o custo total da receita ou composição.
+        Calcula o custo total do produto.
 
-        Para um preparo interno:
-        retorna o custo de toda a receita.
+        Produto de revenda:
+        utiliza o custo de compra.
 
-        Para produto de revenda sem ficha:
-        retorna o custo de compra.
-
-        Para produto com composição:
-        soma os custos dos componentes.
+        Produto produzido:
+        soma os custos dos itens da ficha técnica.
         """
 
         if produtos_visitados is None:
             produtos_visitados = set()
 
-        # Segurança contra referência circular.
+        # Evita referência circular entre produtos.
         if self.id in produtos_visitados:
-            return 0
+            return 0.0
 
-        produtos_visitados = set(produtos_visitados)
+        produtos_visitados = set(
+            produtos_visitados
+        )
+
         produtos_visitados.add(self.id)
 
-        # Produto comprado sem composição.
-        if (
-            self.tipo_produto == "Revenda"
-            and not self.ficha_itens
-        ):
-            return float(self.custo_compra or 0)
+        # Para produto de revenda, utiliza
+        # diretamente o custo de compra.
+        if self.tipo_produto == "Revenda":
+            return float(
+                self.custo_compra or 0
+            )
 
-        custo_total = 0
+        custo_total = 0.0
 
         for item in self.ficha_itens:
-            custo_total += item.custo_item(
+            custo_item = item.custo_item(
                 produtos_visitados
+            )
+
+            custo_total += float(
+                custo_item or 0
             )
 
         return custo_total
@@ -328,10 +343,12 @@ class Produto(db.Model):
     ):
         """
         Converte a quantidade utilizada para a unidade
-        em que o rendimento do produto foi informado.
+        em que o rendimento do preparo foi cadastrado.
         """
 
-        quantidade = float(quantidade or 0)
+        quantidade = float(
+            quantidade or 0
+        )
 
         unidade_origem = (
             unidade_utilizada or ""
@@ -374,13 +391,13 @@ class Produto(db.Model):
         produtos_visitados=None
     ):
         """
-        Calcula o custo da quantidade utilizada
-        de um preparo interno.
+        Calcula o custo proporcional da quantidade
+        utilizada de um preparo interno.
 
         Exemplo:
         receita custa R$ 20,00 e rende 2 kg;
-        foram utilizados 50 g;
-        custo proporcional = R$ 0,50.
+        utilização de 50 g;
+        custo proporcional de R$ 0,50.
         """
 
         rendimento = float(
@@ -388,7 +405,7 @@ class Produto(db.Model):
         )
 
         if rendimento <= 0:
-            return 0
+            return 0.0
 
         try:
             quantidade_convertida = (
@@ -397,13 +414,14 @@ class Produto(db.Model):
                     unidade_utilizada
                 )
             )
-        except ValueError:
-            return 0
 
-        custo_total_receita = (
+        except ValueError:
+            return 0.0
+
+        custo_total_receita = float(
             self.custo_materia_prima(
                 produtos_visitados
-            )
+            ) or 0
         )
 
         proporcao_utilizada = (
@@ -420,9 +438,7 @@ class Produto(db.Model):
         Retorna o custo por unidade de rendimento.
 
         Exemplos:
-        - custo por kg;
-        - custo por litro;
-        - custo por unidade.
+        custo por kg, litro ou unidade.
         """
 
         rendimento = float(
@@ -430,37 +446,128 @@ class Produto(db.Model):
         )
 
         if rendimento <= 0:
-            return 0
+            return 0.0
 
-        return (
-            self.custo_materia_prima()
-            / rendimento
+        custo_total = float(
+            self.custo_materia_prima() or 0
         )
 
+        return custo_total / rendimento
+
     def margem_contribuicao(self):
+        """
+        Calcula a diferença entre o preço de venda
+        e o custo do produto.
+        """
+
         preco = float(
             self.preco_venda or 0
         )
 
         custo = float(
-            self.custo_materia_prima()
+            self.custo_materia_prima() or 0
         )
 
         return preco - custo
 
     def percentual_margem(self):
+        """
+        Calcula o percentual de margem em relação
+        ao preço de venda.
+        """
+
         preco = float(
             self.preco_venda or 0
         )
 
         if preco <= 0:
-            return 0
+            return 0.0
+
+        margem = float(
+            self.margem_contribuicao() or 0
+        )
 
         return (
-            self.margem_contribuicao()
-            / preco
+            margem / preco
         ) * 100
 
+    def preco_sugerido(
+        self,
+        margem_desejada=40
+    ):
+        """
+        Calcula o preço necessário para alcançar
+        a margem desejada.
+
+        A margem padrão é de 40%.
+        """
+
+        custo = float(
+            self.custo_materia_prima() or 0
+        )
+
+        if custo <= 0:
+            return 0.0
+
+        margem = float(
+            margem_desejada or 0
+        )
+
+        if margem <= 0:
+            return custo
+
+        if margem >= 100:
+            margem = 99
+
+        divisor = 1 - (
+            margem / 100
+        )
+
+        if divisor <= 0:
+            return 0.0
+
+        return custo / divisor
+
+    def situacao_preco(
+        self,
+        margem_minima=40
+    ):
+        """
+        Classifica a situação do preço do produto.
+
+        Possíveis resultados:
+        - Sem custo
+        - Revisar
+        - Adequado
+        """
+
+        custo = float(
+            self.custo_materia_prima() or 0
+        )
+
+        preco = float(
+            self.preco_venda or 0
+        )
+
+        if custo <= 0:
+            return "Sem custo"
+
+        if preco <= 0:
+            return "Revisar"
+
+        margem = float(
+            self.percentual_margem() or 0
+        )
+
+        if margem < margem_minima:
+            return "Revisar"
+
+        return "Adequado"
+
+
+# =========================================================
+# FICHA TÉCNICA
+# =========================================================
 
 class FichaTecnica(db.Model):
     id = db.Column(
@@ -468,21 +575,21 @@ class FichaTecnica(db.Model):
         primary_key=True
     )
 
-    # Produto cuja ficha está sendo montada.
+    # Produto cuja ficha técnica está sendo montada.
     produto_id = db.Column(
         db.Integer,
         db.ForeignKey("produto.id"),
         nullable=False
     )
 
-    # Insumo comprado usado na receita.
+    # Insumo comum usado na composição.
     insumo_id = db.Column(
         db.Integer,
         db.ForeignKey("insumo.id"),
         nullable=True
     )
 
-    # Preparo interno usado como componente.
+    # Preparo interno usado na composição.
     produto_base_id = db.Column(
         db.Integer,
         db.ForeignKey("produto.id"),
@@ -536,18 +643,16 @@ class FichaTecnica(db.Model):
 
     def quantidade_convertida_para_estoque(self):
         """
-        Converte a unidade usada na ficha para
-        a unidade em que o insumo é controlado.
+        Converte a quantidade usada na ficha técnica
+        para a unidade de controle do estoque.
         """
-
-        if not self.insumo:
-            return float(
-                self.quantidade or 0
-            )
 
         quantidade = float(
             self.quantidade or 0
         )
+
+        if not self.insumo:
+            return quantidade
 
         unidade_estoque = (
             self.insumo.unidade or ""
@@ -579,12 +684,16 @@ class FichaTecnica(db.Model):
 
         return quantidade * fator
 
-    def custo_item(self, produtos_visitados=None):
+    def custo_item(
+        self,
+        produtos_visitados=None
+    ):
         """
-        Calcula o custo do componente.
+        Calcula o custo deste componente.
 
         Insumo:
-        quantidade convertida × custo médio.
+        quantidade convertida multiplicada pelo
+        custo médio unitário.
 
         Preparo interno:
         custo proporcional ao rendimento.
@@ -616,7 +725,7 @@ class FichaTecnica(db.Model):
                 )
             )
 
-        return 0
+        return 0.0
 
 
 # =========================================================
@@ -624,7 +733,10 @@ class FichaTecnica(db.Model):
 # =========================================================
 
 class Venda(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
 
     data = db.Column(
         db.DateTime,
@@ -669,21 +781,36 @@ class Venda(db.Model):
     )
 
     def margem_percentual(self):
-        receita = float(self.receita_total or 0)
-        margem = float(self.margem_total or 0)
+        receita = float(
+            self.receita_total or 0
+        )
+
+        margem = float(
+            self.margem_total or 0
+        )
 
         if receita <= 0:
-            return 0
+            return 0.0
 
-        return (margem / receita) * 100
+        return (
+            margem / receita
+        ) * 100
+
 
 # =========================================================
 # FINANCEIRO
 # =========================================================
 
 class Financeiro(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    data = db.Column(db.DateTime, default=datetime.now)
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    data = db.Column(
+        db.DateTime,
+        default=datetime.now
+    )
 
     tipo = db.Column(
         db.String(20),
