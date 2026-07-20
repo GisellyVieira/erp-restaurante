@@ -2086,44 +2086,539 @@ body.modal-produto-aberto {
     }
 }
 
-@media (max-width: 760px) {
-    .produtos-topo {
+
+/* =========================================================
+   MÓDULO DE VENDAS PROFISSIONAL
+   ========================================================= */
+
+.vendas-pagina {
+    min-width: 0;
+}
+
+.vendas-topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.vendas-label {
+    display: block;
+    margin-bottom: 5px;
+    color: #2563eb;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+}
+
+.btn-venda-principal,
+.btn-venda-salvar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 10px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 750;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.btn-venda-principal:hover,
+.btn-venda-salvar:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
+}
+
+.btn-venda-principal span {
+    font-size: 20px;
+}
+
+.vendas-mensagens {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.vendas-indicadores {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.venda-indicador {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid #dde6f0;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.venda-indicador-icone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #eff6ff;
+    font-size: 21px;
+}
+
+.venda-indicador span {
+    display: block;
+    margin-bottom: 3px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.venda-indicador strong {
+    display: block;
+    color: #0f172a;
+    font-size: 21px;
+}
+
+.venda-indicador small {
+    display: block;
+    margin-top: 4px;
+    color: #8491a2;
+    font-size: 10px;
+}
+
+.vendas-painel {
+    overflow: hidden;
+    border: 1px solid #dce5ef;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
+}
+
+.vendas-painel-topo {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 22px;
+    border-bottom: 1px solid #e5ebf2;
+}
+
+.vendas-painel-topo h2 {
+    margin: 0 0 4px;
+    color: #0f172a;
+    font-size: 19px;
+}
+
+.vendas-painel-topo p {
+    margin: 0;
+    color: #718096;
+    font-size: 12px;
+}
+
+.vendas-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.venda-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 210px;
+    padding: 0 11px;
+    border: 1px solid #d3deea;
+    border-radius: 9px;
+    background: #ffffff;
+}
+
+.venda-busca span {
+    color: #64748b;
+    font-size: 18px;
+}
+
+.venda-busca input {
+    width: 100%;
+    padding: 10px 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 12px;
+}
+
+.vendas-filtros select,
+.vendas-filtros > input {
+    min-height: 39px;
+    padding: 0 10px;
+    border: 1px solid #d3deea;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #334155;
+    font-size: 11px;
+}
+
+.btn-limpar-filtros {
+    min-height: 39px;
+    padding: 0 12px;
+    border: 1px solid #d3deea;
+    border-radius: 9px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.vendas-tabela-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.vendas-tabela-container table {
+    min-width: 1050px;
+}
+
+.venda-data {
+    display: flex;
+    flex-direction: column;
+}
+
+.venda-data strong {
+    color: #1e293b;
+    font-size: 12px;
+}
+
+.venda-data small {
+    margin-top: 3px;
+    color: #15803d;
+    font-size: 10px;
+}
+
+.venda-data small.retroativo {
+    color: #b45309;
+}
+
+.venda-produto {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.venda-produto > span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 35px;
+    height: 35px;
+    border-radius: 9px;
+    background: #eff6ff;
+}
+
+.venda-produto div {
+    display: flex;
+    flex-direction: column;
+}
+
+.venda-produto strong {
+    color: #172033;
+    font-size: 12px;
+}
+
+.venda-produto small {
+    margin-top: 2px;
+    color: #8491a2;
+    font-size: 10px;
+}
+
+.venda-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.venda-badge.atual {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.venda-badge.retroativa {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.valor-receita {
+    color: #2563eb;
+    font-weight: 750;
+}
+
+.valor-margem {
+    color: #15803d;
+    font-weight: 750;
+}
+
+.venda-margem-percentual {
+    display: inline-flex;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.venda-margem-percentual.baixa {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.btn-excluir-venda {
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #dc2626;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-excluir-venda:hover {
+    background: #fff1f2;
+}
+
+.vendas-vazio {
+    padding: 50px !important;
+    color: #64748b;
+    text-align: center;
+}
+
+.vendas-vazio span {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 30px;
+}
+
+.vendas-vazio strong {
+    display: block;
+    color: #334155;
+}
+
+.vendas-vazio p {
+    margin: 6px 0 0;
+    font-size: 11px;
+}
+
+.vendas-sem-resultado {
+    padding: 35px;
+    color: #64748b;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* Modal */
+
+body.modal-venda-aberto {
+    overflow: hidden;
+}
+
+.venda-modal {
+    position: fixed;
+    z-index: 9999;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(15, 23, 42, 0.58);
+    backdrop-filter: blur(3px);
+}
+
+.venda-modal.aberto {
+    display: flex;
+}
+
+.venda-modal-conteudo {
+    width: min(510px, 100%);
+    overflow: hidden;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 25px 70px rgba(15, 23, 42, 0.28);
+}
+
+.venda-modal-cabecalho {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 23px 25px 19px;
+    border-bottom: 1px solid #e7ecf2;
+}
+
+.venda-modal-cabecalho h2 {
+    margin: 0 0 4px;
+    color: #0f172a;
+    font-size: 21px;
+}
+
+.venda-modal-cabecalho p {
+    margin: 0;
+    color: #718096;
+    font-size: 11px;
+}
+
+.venda-modal-fechar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid #dce4ed;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #64748b;
+    font-size: 23px;
+    cursor: pointer;
+}
+
+.venda-form-profissional {
+    display: grid;
+    gap: 15px;
+    padding: 22px 25px 0;
+}
+
+.venda-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.venda-campo label {
+    color: #445268;
+    font-size: 11px;
+    font-weight: 750;
+}
+
+.venda-campo input,
+.venda-campo select {
+    width: 100%;
+    height: 43px;
+    padding: 0 12px;
+    border: 1px solid #cfd9e5;
+    border-radius: 9px;
+    outline: none;
+    background: #ffffff;
+    color: #172033;
+    font-size: 13px;
+}
+
+.venda-campo input:focus,
+.venda-campo select:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.venda-aviso-data {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 13px;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    background: #f0fdf4;
+}
+
+.venda-aviso-data.retroativo {
+    border-color: #fde68a;
+    background: #fffbeb;
+}
+
+.venda-aviso-data strong {
+    display: block;
+    color: #1e293b;
+    font-size: 11px;
+}
+
+.venda-aviso-data p {
+    margin: 3px 0 0;
+    color: #64748b;
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+.venda-modal-acoes {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin: 6px -25px 0;
+    padding: 18px 25px;
+    background: #f8fafc;
+}
+
+.btn-venda-cancelar {
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid #ccd7e3;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+@media (max-width: 1150px) {
+    .vendas-indicadores {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .vendas-painel-topo {
         align-items: flex-start;
         flex-direction: column;
     }
 
-    .produtos-workspace {
-        display: block;
+    .vendas-filtros {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 700px) {
+    .vendas-topo {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
-    .produtos-navegacao {
-        max-height: 420px;
-        border-right: none;
-        border-bottom: 1px solid #e5ebf2;
-    }
-
-    .produtos-indicadores,
-    .produto-resumo-grid,
-    .produto-informacoes-grid,
-    .produto-form-grid {
+    .vendas-indicadores {
         grid-template-columns: 1fr;
     }
 
-    .produto-detalhes {
-        padding: 18px;
+    .vendas-filtros {
+        display: grid;
+        width: 100%;
+        grid-template-columns: 1fr;
     }
 
-    .produto-modal {
-        padding: 12px;
-    }
-
-    .produto-modal-cabecalho,
-    .produto-form-secao {
-        padding-right: 18px;
-        padding-left: 18px;
-    }
-
-    .produto-modal-acoes {
-        padding: 16px 18px;
+    .venda-busca {
+        min-width: 0;
     }
 }
