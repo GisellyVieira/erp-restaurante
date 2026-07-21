@@ -893,6 +893,12 @@ class Venda(db.Model):
         default=0
     )
 
+    movimentou_estoque = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=True
+    )
+
     produto = db.relationship(
         "Produto",
         back_populates="vendas"
@@ -919,8 +925,6 @@ class Venda(db.Model):
         return (
             margem / receita
         ) * 100
-
-
 # =========================================================
 # FINANCEIRO
 # =========================================================

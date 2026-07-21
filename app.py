@@ -209,6 +209,33 @@ def criar_banco():
             print(
                 "Coluna percentual_armazenagem criada com sucesso."
             )
+            # ==================================================
+# AJUSTES NA TABELA VENDA
+# ==================================================
+
+if "venda" in tabelas:
+    colunas_venda = {
+        coluna["name"]
+        for coluna in inspector.get_columns(
+            "venda"
+        )
+    }
+
+    if "movimentou_estoque" not in colunas_venda:
+        with db.engine.begin() as conexao:
+            conexao.execute(
+                text(
+                    """
+                    ALTER TABLE venda
+                    ADD COLUMN movimentou_estoque
+                    BOOLEAN NOT NULL DEFAULT TRUE
+                    """
+                )
+            )
+
+        print(
+            "Coluna movimentou_estoque criada com sucesso."
+        )
 
 def usuario_logado():
     return "usuario_id" in session
