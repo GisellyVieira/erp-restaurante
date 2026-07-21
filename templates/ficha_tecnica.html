@@ -1081,7 +1081,6 @@
                                         <select
                                             name="insumo_id"
                                             id="campo_insumo"
-                                            required
                                         >
                                             <option value="">
                                                 Selecione o insumo
@@ -1435,6 +1434,56 @@
             });
         }
     );
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const tipoInsumo = document.getElementById("tipo_insumo");
+    const tipoProduto = document.getElementById("tipo_produto");
+
+    const grupoInsumo = document.getElementById("grupoInsumo");
+    const grupoProdutoBase = document.getElementById("grupoProdutoBase");
+
+    const campoInsumo = document.getElementById("campo_insumo");
+    const campoProdutoBase = document.getElementById(
+        "campo_produto_base"
+    );
+
+    function atualizarTipoComponente() {
+        if (tipoProduto && tipoProduto.checked) {
+            grupoInsumo.style.display = "none";
+            grupoProdutoBase.style.display = "block";
+
+            campoInsumo.required = false;
+            campoInsumo.value = "";
+
+            campoProdutoBase.required = true;
+        } else {
+            grupoInsumo.style.display = "block";
+            grupoProdutoBase.style.display = "none";
+
+            campoInsumo.required = true;
+
+            campoProdutoBase.required = false;
+            campoProdutoBase.value = "";
+        }
+    }
+
+    if (tipoInsumo) {
+        tipoInsumo.addEventListener(
+            "change",
+            atualizarTipoComponente
+        );
+    }
+
+    if (tipoProduto) {
+        tipoProduto.addEventListener(
+            "change",
+            atualizarTipoComponente
+        );
+    }
+
+    atualizarTipoComponente();
+});
 </script>
 
 </body>
