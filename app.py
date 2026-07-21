@@ -26,6 +26,7 @@ import io
 import os
 import shutil
 from datetime import datetime
+import traceback
 
 
 app = Flask(__name__)
@@ -1813,18 +1814,21 @@ def vendas():
             )
 
         except Exception as erro:
-            db.session.rollback()
+         db.session.rollback()
 
-            print(
-                f"Erro ao registrar venda: {erro}"
-            )
+    print(
+        f"Erro ao adicionar componente à ficha técnica: {repr(erro)}",
+        flush=True
+    )
 
-            flash(
-                "Não foi possível registrar a venda.",
-                "erro"
-            )
+    traceback.print_exc()
 
-        return redirect(url_for("vendas"))
+    flash(
+        f"Não foi possível adicionar o componente: {erro}",
+        "erro"
+    )
+
+    return redirect(url_for("vendas"))
 
     # =====================================================
     # ABERTURA DA PÁGINA DE VENDAS
