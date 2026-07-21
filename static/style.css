@@ -2622,3 +2622,307 @@ body.modal-venda-aberto {
         min-width: 0;
     }
 }
+/* =========================================================
+   INSUMOS — PARÂMETROS DO LEC
+========================================================= */
+
+.cabecalho-secao-insumo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+}
+
+.cabecalho-secao-insumo h2 {
+    margin-bottom: 4px;
+}
+
+.cabecalho-secao-insumo p {
+    margin: 0;
+    color: #9d9d9d;
+    font-size: 14px;
+}
+
+.campo-formulario {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.campo-formulario label {
+    color: #d8d8d8;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.campo-formulario small {
+    color: #858585;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.campo-botao-insumo {
+    display: flex;
+    align-items: flex-end;
+}
+
+.campo-botao-insumo button {
+    width: 100%;
+}
+
+.parametros-lec {
+    grid-column: 1 / -1;
+    margin-top: 6px;
+    border: 1px solid #2d2d2d;
+    border-radius: 10px;
+    background: #151515;
+    overflow: hidden;
+}
+
+.parametros-lec summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    color: #d8d8d8;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+}
+
+.parametros-lec summary::-webkit-details-marker {
+    display: none;
+}
+
+.parametros-lec summary::after {
+    content: "+";
+    color: #ff7a00;
+    font-size: 20px;
+    font-weight: 400;
+}
+
+.parametros-lec[open] summary::after {
+    content: "−";
+}
+
+.parametros-lec summary span {
+    margin-left: auto;
+    margin-right: 15px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    background: #242424;
+    color: #999999;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.parametros-lec-conteudo {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    gap: 16px;
+    padding: 4px 16px 18px;
+    border-top: 1px solid #292929;
+}
+
+.parametros-lec-conteudo .campo-formulario {
+    padding-top: 16px;
+}
+
+.input-com-sufixo {
+    position: relative;
+}
+
+.input-com-sufixo input {
+    width: 100%;
+    padding-right: 42px;
+}
+
+.input-com-sufixo span {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    transform: translateY(-50%);
+    color: #8f8f8f;
+    font-size: 13px;
+    pointer-events: none;
+}
+
+/* =========================================================
+   INSUMOS — IDENTIFICAÇÃO E VALORES
+========================================================= */
+
+.identificacao-insumo,
+.valor-estoque-insumo,
+.valor-custo-insumo {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.identificacao-insumo strong,
+.valor-estoque-insumo strong,
+.valor-custo-insumo strong {
+    color: #f0f0f0;
+}
+
+.identificacao-insumo small,
+.valor-estoque-insumo span,
+.valor-custo-insumo small {
+    color: #858585;
+    font-size: 11px;
+}
+
+/* =========================================================
+   INSUMOS — COMPRA SUGERIDA
+========================================================= */
+
+.compra-sugerida,
+.compra-sugerida-indisponivel {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 95px;
+}
+
+.compra-sugerida-valor {
+    color: #e8e8e8;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.compra-sugerida small,
+.compra-sugerida-indisponivel small {
+    color: #7f7f7f;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.compra-sugerida-destaque {
+    padding: 8px 10px;
+    border: 1px solid rgba(255, 122, 0, 0.35);
+    border-radius: 8px;
+    background: rgba(255, 122, 0, 0.08);
+}
+
+.compra-sugerida-destaque .compra-sugerida-valor {
+    color: #ff9a3d;
+}
+
+.compra-sugerida-indisponivel span {
+    color: #777777;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* =========================================================
+   RESPONSIVIDADE
+========================================================= */
+
+@media (max-width: 1000px) {
+    .parametros-lec-conteudo {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 760px) {
+    .cabecalho-secao-insumo {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .parametros-lec-conteudo {
+        grid-template-columns: 1fr;
+    }
+}
+/* =========================================================
+   EDITAR INSUMO
+========================================================= */
+
+.rotulo-edicao-insumo {
+    display: inline-block;
+    margin-bottom: 5px;
+    color: #ff7a00;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+}
+
+.resumo-lec-edicao {
+    display: flex;
+    flex-direction: column;
+    min-width: 160px;
+    padding: 12px 16px;
+    border: 1px solid #303030;
+    border-radius: 10px;
+    background: #151515;
+}
+
+.resumo-lec-edicao small {
+    margin-bottom: 4px;
+    color: #888888;
+    font-size: 11px;
+}
+
+.resumo-lec-edicao strong {
+    color: #ff9a3d;
+    font-size: 18px;
+}
+
+.resumo-lec-edicao span {
+    margin-top: 2px;
+    color: #777777;
+    font-size: 10px;
+}
+
+.acoes-formulario-edicao {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.acoes-formulario-edicao button,
+.btn-secundario-insumo {
+    min-width: 150px;
+}
+
+.btn-secundario-insumo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 18px;
+    border: 1px solid #383838;
+    border-radius: 8px;
+    background: transparent;
+    color: #d0d0d0;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.btn-secundario-insumo:hover {
+    border-color: #555555;
+    background: #202020;
+}
+
+@media (max-width: 760px) {
+    .resumo-lec-edicao {
+        width: 100%;
+    }
+
+    .acoes-formulario-edicao {
+        flex-direction: column-reverse;
+    }
+
+    .acoes-formulario-edicao button,
+    .btn-secundario-insumo {
+        width: 100%;
+    }
+}

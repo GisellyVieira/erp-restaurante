@@ -2,145 +2,570 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Insumos - ERP Restaurante</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
 </head>
+
 <body>
 
 <div class="layout">
 
     <aside class="sidebar">
+
         <div class="brand">
             <div class="logo-menu">🔥</div>
             <h2>ERP Restaurante</h2>
         </div>
 
         <nav>
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a class="ativo" href="{{ url_for('insumos') }}">Insumos</a>
-            <a href="{{ url_for('produtos') }}">Produtos</a>
-            <a href="{{ url_for('ficha_tecnica') }}">Ficha Técnica</a>
-            <a href="{{ url_for('vendas') }}">Vendas</a>
-            <a href="{{ url_for('financeiro') }}">Caixa</a>
-            <a href="{{ url_for('relatorios') }}">Relatórios</a>
-            <a href="{{ url_for('configuracoes') }}">Configurações</a>
-            <a href="{{ url_for('logout') }}">Sair</a>
+            <a href="{{ url_for('dashboard') }}">
+                Dashboard
+            </a>
+
+            <a
+                class="ativo"
+                href="{{ url_for('insumos') }}"
+            >
+                Insumos
+            </a>
+
+            <a href="{{ url_for('produtos') }}">
+                Produtos
+            </a>
+
+            <a href="{{ url_for('ficha_tecnica') }}">
+                Ficha Técnica
+            </a>
+
+            <a href="{{ url_for('vendas') }}">
+                Vendas
+            </a>
+
+            <a href="{{ url_for('financeiro') }}">
+                Caixa
+            </a>
+
+            <a href="{{ url_for('relatorios') }}">
+                Relatórios
+            </a>
+
+            <a href="{{ url_for('configuracoes') }}">
+                Configurações
+            </a>
+
+            <a href="{{ url_for('logout') }}">
+                Sair
+            </a>
         </nav>
+
     </aside>
 
     <main class="conteudo">
 
+        <!-- ==================================================
+             CABEÇALHO
+        =================================================== -->
+
         <header class="topo insumos-topo">
+
             <div>
                 <h1>Gestão de Insumos</h1>
-                <p>Controle matérias-primas, compras, custos e níveis de estoque.</p>
+
+                <p>
+                    Controle matérias-primas, compras,
+                    custos e níveis de estoque.
+                </p>
             </div>
+
         </header>
 
+        <!-- ==================================================
+             DESTAQUE DO MÓDULO
+        =================================================== -->
+
         <section class="painel painel-destaque-insumos">
+
             <div>
                 <span>Módulo operacional</span>
+
                 <h2>Controle de Estoque</h2>
-                <p>Cadastre insumos, registre compras e acompanhe o status de reposição.</p>
+
+                <p>
+                    Cadastre insumos, registre compras e
+                    acompanhe as necessidades de reposição.
+                </p>
             </div>
+
         </section>
 
+        <!-- ==================================================
+             CADASTRO DE INSUMO
+        =================================================== -->
+
         <section class="painel">
-            <h2>Novo Insumo</h2>
 
-            <form method="POST" class="form-grid insumo-form">
-                <input type="text" name="nome" placeholder="Nome do insumo" required>
+            <div class="cabecalho-secao-insumo">
+                <div>
+                    <h2>Novo Insumo</h2>
 
-                <select name="unidade" required>
-                    <option value="">Unidade de medida</option>
-                    <option value="kg">kg</option>
-                    <option value="g">g</option>
-                    <option value="L">Litro</option>
-                    <option value="ml">ml</option>
-                    <option value="un">Unidade</option>
-                    <option value="pacote">Pacote</option>
-                    <option value="caixa">Caixa</option>
-                </select>
+                    <p>
+                        Informe os dados básicos do item.
+                    </p>
+                </div>
+            </div>
 
-                <input type="hidden" name="categoria" value="Matéria-prima">
+            <form
+                method="POST"
+                class="form-grid insumo-form"
+            >
 
-                <button type="submit">Cadastrar Insumo</button>
+                <div class="campo-formulario">
+                    <label for="nome">
+                        Nome do insumo
+                    </label>
+
+                    <input
+                        type="text"
+                        id="nome"
+                        name="nome"
+                        placeholder="Ex.: Carne bovina"
+                        required
+                    >
+                </div>
+
+                <div class="campo-formulario">
+                    <label for="unidade">
+                        Unidade de medida
+                    </label>
+
+                    <select
+                        id="unidade"
+                        name="unidade"
+                        required
+                    >
+                        <option value="">
+                            Selecione
+                        </option>
+
+                        <option value="kg">
+                            Quilograma (kg)
+                        </option>
+
+                        <option value="g">
+                            Grama (g)
+                        </option>
+
+                        <option value="L">
+                            Litro (L)
+                        </option>
+
+                        <option value="ml">
+                            Mililitro (ml)
+                        </option>
+
+                        <option value="un">
+                            Unidade (un)
+                        </option>
+
+                        <option value="pacote">
+                            Pacote
+                        </option>
+
+                        <option value="caixa">
+                            Caixa
+                        </option>
+                    </select>
+                </div>
+
+                <input
+                    type="hidden"
+                    name="categoria"
+                    value="Matéria-prima"
+                >
+
+                <div class="campo-botao-insumo">
+                    <button type="submit">
+                        Cadastrar Insumo
+                    </button>
+                </div>
+
+                <!--
+                    Os parâmetros do LEC ficam recolhidos
+                    para não poluir visualmente a tela.
+                -->
+
+                <details class="parametros-lec">
+
+                    <summary>
+                        Parâmetros de compra
+                        <span>Opcional</span>
+                    </summary>
+
+                    <div class="parametros-lec-conteudo">
+
+                        <div class="campo-formulario">
+                            <label for="demanda_mensal_estimada">
+                                Demanda mensal estimada
+                            </label>
+
+                            <input
+                                type="number"
+                                id="demanda_mensal_estimada"
+                                name="demanda_mensal_estimada"
+                                min="0"
+                                step="0.01"
+                                value="0"
+                                placeholder="Ex.: 80"
+                            >
+
+                            <small>
+                                Quantidade estimada para um mês.
+                            </small>
+                        </div>
+
+                        <div class="campo-formulario">
+                            <label for="custo_pedido">
+                                Custo por pedido
+                            </label>
+
+                            <input
+                                type="number"
+                                id="custo_pedido"
+                                name="custo_pedido"
+                                min="0"
+                                step="0.01"
+                                value="0"
+                                placeholder="Ex.: 15,00"
+                            >
+
+                            <small>
+                                Gastos envolvidos em cada compra.
+                            </small>
+                        </div>
+
+                        <div class="campo-formulario">
+                            <label for="percentual_armazenagem">
+                                Custo de armazenagem
+                            </label>
+
+                            <div class="input-com-sufixo">
+                                <input
+                                    type="number"
+                                    id="percentual_armazenagem"
+                                    name="percentual_armazenagem"
+                                    min="0"
+                                    step="0.01"
+                                    value="10"
+                                >
+
+                                <span>%</span>
+                            </div>
+
+                            <small>
+                                Percentual estimado para manter o item.
+                            </small>
+                        </div>
+
+                    </div>
+
+                </details>
+
             </form>
+
         </section>
 
+        <!-- ==================================================
+             CONTROLE DE INSUMOS
+        =================================================== -->
+
         <section class="painel">
+
             <div class="painel-cabecalho-insumos">
+
                 <div>
                     <h2>Controle de Insumos</h2>
-                    <p>Use a busca para localizar rapidamente o item comprado.</p>
+
+                    <p>
+                        Consulte o estoque e registre as compras.
+                    </p>
                 </div>
 
                 <div class="busca-insumo">
-                    <span>🔍</span>
-                    <input type="text" id="buscarInsumo" placeholder="Buscar insumo...">
+                    <span aria-hidden="true">🔍</span>
+
+                    <input
+                        type="text"
+                        id="buscarInsumo"
+                        placeholder="Buscar insumo..."
+                        autocomplete="off"
+                    >
                 </div>
+
             </div>
 
             <div class="tabela-container">
+
                 <table class="tabela-insumos">
+
                     <thead>
                         <tr>
                             <th>Insumo</th>
-                            <th>Estoque Atual</th>
-                            <th>Custo Médio</th>
+                            <th>Estoque atual</th>
+                            <th>Custo médio</th>
                             <th>Status</th>
-                            <th>Registrar Compra</th>
+
+                            <th
+                                title="Quantidade aproximada recomendada para cada compra."
+                            >
+                                Compra sugerida
+                            </th>
+
+                            <th>Registrar compra</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
 
                     <tbody>
+
                     {% for i in insumos %}
+
+                        {% set status = i.status_estoque() %}
+                        {% set lec = i.lote_economico() %}
+
                         <tr>
-                            <td>
-                                <strong>{{ i.nome }}</strong><br>
-                                <small>{{ i.unidade }}</small>
-                            </td>
 
-                            <td>{{ "%.2f"|format(i.estoque_atual()) }} {{ i.unidade }}</td>
-
-                            <td>R$ {{ "%.2f"|format(i.custo_medio_unitario()) }}</td>
+                            <!-- INSUMO -->
 
                             <td>
-                                {% if i.status_estoque() == "Sem estoque" %}
-                                    <span class="status alerta">Sem estoque</span>
-                                {% elif i.status_estoque() == "Ponto de pedido" %}
-                                    <span class="status alerta">Ponto de Pedido</span>
-                                {% elif i.status_estoque() == "Cobertura baixa" %}
-                                    <span class="status atencao">Cobertura Baixa</span>
-                                {% else %}
-                                    <span class="status normal">Normal</span>
-                                {% endif %}
-                            </td>
+                                <div class="identificacao-insumo">
 
-                            <td>
-                                <form method="POST" action="{{ url_for('entrada_estoque', insumo_id=i.id) }}" class="form-compra form-compra-profissional">
-                                    <input type="number" step="0.01" name="quantidade" placeholder="Quantidade" required>
-                                    <input type="number" step="0.01" name="valor_total" placeholder="Valor pago" required>
-                                    <button type="submit">Registrar</button>
-                                </form>
-                            </td>
+                                    <strong>
+                                        {{ i.nome }}
+                                    </strong>
 
-                            <td>
-                                <div class="acoes-insumo">
-                                    <a class="btn-editar" href="{{ url_for('editar_insumo', id=i.id) }}">Editar</a>
-                                    <a class="btn-excluir" href="{{ url_for('excluir_insumo', id=i.id) }}">Excluir</a>
+                                    <small>
+                                        {{ i.unidade }}
+                                    </small>
+
                                 </div>
                             </td>
+
+                            <!-- ESTOQUE ATUAL -->
+
+                            <td>
+                                <div class="valor-estoque-insumo">
+
+                                    <strong>
+                                        {{ "%.2f"|format(i.estoque_atual()) }}
+                                    </strong>
+
+                                    <span>
+                                        {{ i.unidade }}
+                                    </span>
+
+                                </div>
+                            </td>
+
+                            <!-- CUSTO MÉDIO -->
+
+                            <td>
+                                <div class="valor-custo-insumo">
+
+                                    <strong>
+                                        R$
+                                        {{ "%.2f"|format(i.custo_medio_unitario()) }}
+                                    </strong>
+
+                                    <small>
+                                        por {{ i.unidade }}
+                                    </small>
+
+                                </div>
+                            </td>
+
+                            <!-- STATUS -->
+
+                            <td>
+
+                                {% if status == "Sem estoque" %}
+
+                                    <span class="status alerta">
+                                        Sem estoque
+                                    </span>
+
+                                {% elif status == "Abaixo do mínimo" %}
+
+                                    <span class="status alerta">
+                                        Abaixo do mínimo
+                                    </span>
+
+                                {% elif status == "Ponto de pedido" %}
+
+                                    <span class="status atencao">
+                                        Ponto de pedido
+                                    </span>
+
+                                {% elif status == "Cobertura baixa" %}
+
+                                    <span class="status atencao">
+                                        Cobertura baixa
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="status normal">
+                                        Normal
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <!-- COMPRA SUGERIDA / LEC -->
+
+                            <td>
+
+                                {% if lec > 0 %}
+
+                                    <div
+                                        class="compra-sugerida
+                                        {% if status != 'Normal' %}
+                                            compra-sugerida-destaque
+                                        {% endif %}"
+                                        title="Quantidade aproximada recomendada pelo Lote Econômico de Compra."
+                                    >
+
+                                        <span class="compra-sugerida-valor">
+                                            ≈ {{ "%.2f"|format(lec) }}
+                                            {{ i.unidade }}
+                                        </span>
+
+                                        <small>
+                                            por compra
+                                        </small>
+
+                                    </div>
+
+                                {% else %}
+
+                                    <div
+                                        class="compra-sugerida-indisponivel"
+                                        title="Informe os parâmetros de compra na edição do insumo."
+                                    >
+
+                                        <span>—</span>
+
+                                        <small>
+                                            Não calculado
+                                        </small>
+
+                                    </div>
+
+                                {% endif %}
+
+                            </td>
+
+                            <!-- REGISTRAR COMPRA -->
+
+                            <td>
+
+                                <form
+                                    method="POST"
+                                    action="{{ url_for(
+                                        'entrada_estoque',
+                                        insumo_id=i.id
+                                    ) }}"
+                                    class="form-compra form-compra-profissional"
+                                >
+
+                                    <input
+                                        type="number"
+                                        min="0.01"
+                                        step="0.01"
+                                        name="quantidade"
+                                        placeholder="Quantidade"
+                                        aria-label="Quantidade comprada"
+                                        required
+                                    >
+
+                                    <input
+                                        type="number"
+                                        min="0.01"
+                                        step="0.01"
+                                        name="valor_total"
+                                        placeholder="Valor pago"
+                                        aria-label="Valor total pago"
+                                        required
+                                    >
+
+                                    <button type="submit">
+                                        Registrar
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+                            <!-- AÇÕES -->
+
+                            <td>
+
+                                <div class="acoes-insumo">
+
+                                    <a
+                                        class="btn-editar"
+                                        href="{{ url_for(
+                                            'editar_insumo',
+                                            id=i.id
+                                        ) }}"
+                                    >
+                                        Editar
+                                    </a>
+
+                                    <a
+                                        class="btn-excluir"
+                                        href="{{ url_for(
+                                            'excluir_insumo',
+                                            id=i.id
+                                        ) }}"
+                                        onclick="return confirmarExclusao(
+                                            '{{ i.nome|e }}'
+                                        )"
+                                    >
+                                        Excluir
+                                    </a>
+
+                                </div>
+
+                            </td>
+
                         </tr>
+
                     {% else %}
+
                         <tr>
-                            <td colspan="6" class="vazio">Nenhum insumo cadastrado.</td>
+                            <td
+                                colspan="7"
+                                class="vazio"
+                            >
+                                Nenhum insumo cadastrado.
+                            </td>
                         </tr>
+
                     {% endfor %}
+
                     </tbody>
+
                 </table>
+
             </div>
+
         </section>
 
     </main>
@@ -148,19 +573,33 @@
 </div>
 
 <script>
-const campoBusca = document.getElementById("buscarInsumo");
+    const campoBusca = document.getElementById("buscarInsumo");
 
-if (campoBusca) {
-    campoBusca.addEventListener("keyup", function() {
-        const filtro = this.value.toLowerCase();
-        const linhas = document.querySelectorAll(".tabela-insumos tbody tr");
+    if (campoBusca) {
+        campoBusca.addEventListener("input", function () {
+            const filtro = this.value
+                .toLowerCase()
+                .trim();
 
-        linhas.forEach(function(linha) {
-            const texto = linha.innerText.toLowerCase();
-            linha.style.display = texto.includes(filtro) ? "" : "none";
+            const linhas = document.querySelectorAll(
+                ".tabela-insumos tbody tr"
+            );
+
+            linhas.forEach(function (linha) {
+                const texto = linha.innerText.toLowerCase();
+
+                linha.style.display = texto.includes(filtro)
+                    ? ""
+                    : "none";
+            });
         });
-    });
-}
+    }
+
+    function confirmarExclusao(nomeInsumo) {
+        return confirm(
+            `Deseja realmente excluir o insumo "${nomeInsumo}"?`
+        );
+    }
 </script>
 
 </body>

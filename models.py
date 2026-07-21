@@ -29,10 +29,47 @@ class Usuario(db.Model):
 # =========================================================
 
 class Insumo(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), nullable=False)
-    unidade = db.Column(db.String(20), nullable=False)
-    categoria = db.Column(db.String(30), default="Matéria-prima")
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    nome = db.Column(
+        db.String(100),
+        nullable=False
+    )
+
+    unidade = db.Column(
+        db.String(20),
+        nullable=False
+    )
+
+    categoria = db.Column(
+        db.String(30),
+        default="Matéria-prima"
+    )
+
+    # =====================================================
+    # DADOS PARA O LOTE ECONÔMICO DE COMPRA — LEC
+    # =====================================================
+
+    demanda_mensal_estimada = db.Column(
+        db.Float,
+        default=0,
+        nullable=False
+    )
+
+    custo_pedido = db.Column(
+        db.Float,
+        default=0,
+        nullable=False
+    )
+
+    percentual_armazenagem = db.Column(
+        db.Float,
+        default=10,
+        nullable=False
+    )
 
     movimentacoes = db.relationship(
         "MovimentacaoEstoque",
@@ -41,16 +78,20 @@ class Insumo(db.Model):
         cascade="all, delete-orphan"
     )
 
+    # =====================================================
+    # MOVIMENTAÇÕES
+    # =====================================================
+
     def entradas(self):
         return sum(
-            movimentacao.quantidade
+            float(movimentacao.quantidade or 0)
             for movimentacao in self.movimentacoes
             if movimentacao.tipo == "Entrada"
         )
 
     def saidas(self):
         return sum(
-            movimentacao.quantidade
+            float(movimentacao.quantidade or 0)
             for movimentacao in self.movimentacoes
             if movimentacao.tipo == "Saída"
         )
@@ -60,10 +101,14 @@ class Insumo(db.Model):
 
     def valor_total_entradas(self):
         return sum(
-            movimentacao.valor_total
+            float(movimentacao.valor_total or 0)
             for movimentacao in self.movimentacoes
             if movimentacao.tipo == "Entrada"
         )
+
+    # =====================================================
+    # CUSTO MÉDIO
+    # =====================================================
 
     def custo_medio_unitario(self):
         entradas = self.entradas()
@@ -71,7 +116,14 @@ class Insumo(db.Model):
         if entradas <= 0:
             return 0
 
-        return self.valor_total_entradas() / entradas
+        return (
+            self.valor_total_entradas()
+            / entradas
+        )
+
+    # =====================================================
+    # CONSUMO E ESTOQUE DE SEGURANÇA
+    # =====================================================
 
     def consumo_medio_diario(self):
         saidas = [
@@ -83,16 +135,24 @@ class Insumo(db.Model):
         if not saidas:
             return 0
 
-        return sum(
-            movimentacao.quantidade
+        quantidade_total = sum(
+            float(movimentacao.quantidade or 0)
             for movimentacao in saidas
-        ) / 30
+        )
+
+        return quantidade_total / 30
 
     def estoque_seguranca(self):
-        return self.consumo_medio_diario() * 0.10
+        return (
+            self.consumo_medio_diario()
+            * 0.10
+        )
 
     def ponto_pedido(self):
         consumo = self.consumo_medio_diario()
+
+        # Tempo médio de reposição considerado:
+        # 2 dias.
         tempo_reposicao = 2
 
         return (
@@ -102,30 +162,84 @@ class Insumo(db.Model):
     def estoque_minimo(self):
         return self.ponto_pedido()
 
-    def lote_economico(self):
-        demanda = self.saidas()
-        custo_pedido = 20
-        custo_armazenagem = self.custo_medio_unitario()
+    # =====================================================
+    # LOTE ECONÔMICO DE COMPRA — LEC
+    # =====================================================
 
-        if demanda <= 0 or custo_armazenagem <= 0:
+    def custo_armazenagem_unitario(self):
+        custo_unitario = float(
+            self.custo_medio_unitario() or 0
+        )
+
+        percentual = float(
+            self.percentual_armazenagem or 0
+        )
+
+        if custo_unitario <= 0:
+            return 0
+
+        if percentual <= 0:
+            return 0
+
+        return (
+            custo_unitario
+            * percentual
+        ) / 100
+
+    def lote_economico(self):
+        demanda = float(
+            self.demanda_mensal_estimada or 0
+        )
+
+        custo_pedido = float(
+            self.custo_pedido or 0
+        )
+
+        custo_armazenagem = float(
+            self.custo_armazenagem_unitario() or 0
+        )
+
+        if demanda <= 0:
+            return 0
+
+        if custo_pedido <= 0:
+            return 0
+
+        if custo_armazenagem <= 0:
             return 0
 
         return math.sqrt(
-            (2 * demanda * custo_pedido) / custo_armazenagem
+            (
+                2
+                * demanda
+                * custo_pedido
+            )
+            / custo_armazenagem
         )
 
     def estoque_maximo(self):
-        return self.estoque_minimo() + self.lote_economico()
+        return (
+            self.estoque_minimo()
+            + self.lote_economico()
+        )
+
+    # =====================================================
+    # INDICADORES DE ESTOQUE
+    # =====================================================
 
     def giro_estoque(self):
         estoque_medio = (
-            self.estoque_minimo() + self.estoque_maximo()
+            self.estoque_minimo()
+            + self.estoque_maximo()
         ) / 2
 
         if estoque_medio <= 0:
             return 0
 
-        return self.saidas() / estoque_medio
+        return (
+            self.saidas()
+            / estoque_medio
+        )
 
     def cobertura_estoque(self):
         consumo = self.consumo_medio_diario()
@@ -133,36 +247,46 @@ class Insumo(db.Model):
         if consumo <= 0:
             return 0
 
-        return self.estoque_atual() / consumo
+        return (
+            self.estoque_atual()
+            / consumo
+        )
+
+    # =====================================================
+    # STATUS E AÇÃO SUGERIDA
+    # =====================================================
 
     def acao_sugerida(self):
-        if self.estoque_atual() <= 0:
+        estoque = self.estoque_atual()
+
+        if estoque <= 0:
             return "Comprar agora"
 
-        if self.estoque_atual() <= self.estoque_minimo():
+        if estoque <= self.estoque_minimo():
             return "Comprar agora"
 
-        if self.estoque_atual() <= self.ponto_pedido():
+        if estoque <= self.ponto_pedido():
             return "Planejar compra"
 
         return "Manter estoque"
 
     def status_estoque(self):
-        if self.estoque_atual() <= 0:
+        estoque = self.estoque_atual()
+
+        if estoque <= 0:
             return "Sem estoque"
 
-        if self.estoque_atual() <= self.estoque_minimo():
+        if estoque <= self.estoque_minimo():
             return "Abaixo do mínimo"
 
-        if self.estoque_atual() <= self.ponto_pedido():
+        if estoque <= self.ponto_pedido():
             return "Ponto de pedido"
 
         if self.cobertura_estoque() <= 2:
             return "Cobertura baixa"
 
         return "Normal"
-
-
+    
 # =========================================================
 # MOVIMENTAÇÃO DE ESTOQUE
 # =========================================================

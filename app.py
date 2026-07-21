@@ -145,6 +145,65 @@ def criar_banco():
                 "Coluna rendimento_unidade "
                 "criada com sucesso."
             )
+                # ==================================================
+    # AJUSTES NA TABELA INSUMO
+    # ==================================================
+
+    if "insumo" in tabelas:
+        colunas_insumo = {
+            coluna["name"]
+            for coluna in inspector.get_columns(
+                "insumo"
+            )
+        }
+
+        if "demanda_mensal_estimada" not in colunas_insumo:
+            with db.engine.begin() as conexao:
+                conexao.execute(
+                    text(
+                        """
+                        ALTER TABLE insumo
+                        ADD COLUMN demanda_mensal_estimada
+                        FLOAT NOT NULL DEFAULT 0
+                        """
+                    )
+                )
+
+            print(
+                "Coluna demanda_mensal_estimada criada com sucesso."
+            )
+
+        if "custo_pedido" not in colunas_insumo:
+            with db.engine.begin() as conexao:
+                conexao.execute(
+                    text(
+                        """
+                        ALTER TABLE insumo
+                        ADD COLUMN custo_pedido
+                        FLOAT NOT NULL DEFAULT 0
+                        """
+                    )
+                )
+
+            print(
+                "Coluna custo_pedido criada com sucesso."
+            )
+
+        if "percentual_armazenagem" not in colunas_insumo:
+            with db.engine.begin() as conexao:
+                conexao.execute(
+                    text(
+                        """
+                        ALTER TABLE insumo
+                        ADD COLUMN percentual_armazenagem
+                        FLOAT NOT NULL DEFAULT 10
+                        """
+                    )
+                )
+
+            print(
+                "Coluna percentual_armazenagem criada com sucesso."
+            )
 
 def usuario_logado():
     return "usuario_id" in session
@@ -410,23 +469,57 @@ def insumos():
             "Matéria-prima",
         ).strip()
 
+        demanda_mensal_estimada = converter_float(
+            request.form.get("demanda_mensal_estimada")
+        )
+
+        custo_pedido = converter_float(
+            request.form.get("custo_pedido")
+        )
+
+        percentual_armazenagem = converter_float(
+            request.form.get("percentual_armazenagem")
+        )
+
+        if percentual_armazenagem <= 0:
+            percentual_armazenagem = 10
+
         if not nome or not unidade:
             flash("Preencha o nome e a unidade do insumo.")
             return redirect(url_for("insumos"))
 
-        novo = Insumo(
-            nome=nome,
-            unidade=unidade,
-            categoria=categoria or "Matéria-prima",
-        )
+        if demanda_mensal_estimada < 0:
+            flash("A demanda mensal não pode ser negativa.")
+            return redirect(url_for("insumos"))
 
-        db.session.add(novo)
-        db.session.commit()
+        if custo_pedido < 0:
+            flash("O custo por pedido não pode ser negativo.")
+            return redirect(url_for("insumos"))
 
-        flash("Insumo cadastrado com sucesso!")
+        try:
+            novo = Insumo(
+                nome=nome,
+                unidade=unidade,
+                categoria=categoria or "Matéria-prima",
+                demanda_mensal_estimada=demanda_mensal_estimada,
+                custo_pedido=custo_pedido,
+                percentual_armazenagem=percentual_armazenagem,
+            )
+
+            db.session.add(novo)
+            db.session.commit()
+
+            flash("Insumo cadastrado com sucesso!")
+
+        except Exception:
+            db.session.rollback()
+            flash("Não foi possível cadastrar o insumo.")
+
         return redirect(url_for("insumos"))
 
-    lista = Insumo.query.order_by(Insumo.nome).all()
+    lista = Insumo.query.order_by(
+        Insumo.nome.asc()
+    ).all()
 
     return render_template(
         "insumos.html",
@@ -434,7 +527,10 @@ def insumos():
     )
 
 
-@app.route("/entrada_estoque/<int:insumo_id>", methods=["POST"])
+@app.route(
+    "/entrada_estoque/<int:insumo_id>",
+    methods=["POST"]
+)
 def entrada_estoque(insumo_id):
     if not usuario_logado():
         return redirect(url_for("login"))
@@ -450,7 +546,9 @@ def entrada_estoque(insumo_id):
     )
 
     if quantidade <= 0:
-        flash("A quantidade da entrada deve ser maior que zero.")
+        flash(
+            "A quantidade da entrada deve ser maior que zero."
+        )
         return redirect(url_for("insumos"))
 
     if valor_total < 0:
@@ -459,7 +557,7 @@ def entrada_estoque(insumo_id):
 
     try:
         entrada = MovimentacaoEstoque(
-            insumo_id=insumo_id,
+            insumo_id=insumo.id,
             tipo="Entrada",
             quantidade=quantidade,
             valor_total=valor_total,
@@ -477,16 +575,24 @@ def entrada_estoque(insumo_id):
         db.session.add(saida_financeira)
         db.session.commit()
 
-        flash("Entrada de estoque registrada com sucesso!")
+        flash(
+            "Entrada de estoque registrada com sucesso!"
+        )
 
     except Exception:
         db.session.rollback()
-        flash("Não foi possível registrar a entrada de estoque.")
+
+        flash(
+            "Não foi possível registrar a entrada de estoque."
+        )
 
     return redirect(url_for("insumos"))
 
 
-@app.route("/insumos/editar/<int:id>", methods=["GET", "POST"])
+@app.route(
+    "/insumos/editar/<int:id>",
+    methods=["GET", "POST"]
+)
 def editar_insumo(id):
     if not usuario_logado():
         return redirect(url_for("login"))
@@ -501,19 +607,86 @@ def editar_insumo(id):
             "Matéria-prima",
         ).strip()
 
+        demanda_mensal_estimada = converter_float(
+            request.form.get("demanda_mensal_estimada")
+        )
+
+        custo_pedido = converter_float(
+            request.form.get("custo_pedido")
+        )
+
+        percentual_armazenagem = converter_float(
+            request.form.get("percentual_armazenagem")
+        )
+
+        if percentual_armazenagem <= 0:
+            percentual_armazenagem = 10
+
         if not nome or not unidade:
             flash("Preencha o nome e a unidade do insumo.")
+
             return redirect(
-                url_for("editar_insumo", id=insumo.id)
+                url_for(
+                    "editar_insumo",
+                    id=insumo.id,
+                )
             )
 
-        insumo.nome = nome
-        insumo.unidade = unidade
-        insumo.categoria = categoria or "Matéria-prima"
+        if demanda_mensal_estimada < 0:
+            flash("A demanda mensal não pode ser negativa.")
 
-        db.session.commit()
+            return redirect(
+                url_for(
+                    "editar_insumo",
+                    id=insumo.id,
+                )
+            )
 
-        flash("Insumo atualizado com sucesso!")
+        if custo_pedido < 0:
+            flash("O custo por pedido não pode ser negativo.")
+
+            return redirect(
+                url_for(
+                    "editar_insumo",
+                    id=insumo.id,
+                )
+            )
+
+        try:
+            insumo.nome = nome
+            insumo.unidade = unidade
+            insumo.categoria = (
+                categoria or "Matéria-prima"
+            )
+
+            insumo.demanda_mensal_estimada = (
+                demanda_mensal_estimada
+            )
+
+            insumo.custo_pedido = custo_pedido
+
+            insumo.percentual_armazenagem = (
+                percentual_armazenagem
+            )
+
+            db.session.commit()
+
+            flash("Insumo atualizado com sucesso!")
+
+        except Exception:
+            db.session.rollback()
+
+            flash(
+                "Não foi possível atualizar o insumo."
+            )
+
+            return redirect(
+                url_for(
+                    "editar_insumo",
+                    id=insumo.id,
+                )
+            )
+
         return redirect(url_for("insumos"))
 
     return render_template(
@@ -522,7 +695,10 @@ def editar_insumo(id):
     )
 
 
-@app.route("/excluir_insumo/<int:id>", methods=["POST", "GET"])
+@app.route(
+    "/excluir_insumo/<int:id>",
+    methods=["POST", "GET"]
+)
 def excluir_insumo(id):
     if not usuario_logado():
         return redirect(url_for("login"))
@@ -531,8 +707,10 @@ def excluir_insumo(id):
 
     if getattr(insumo, "movimentacoes", None):
         flash(
-            "Este insumo não pode ser excluído porque possui movimentações."
+            "Este insumo não pode ser excluído "
+            "porque possui movimentações."
         )
+
         return redirect(url_for("insumos"))
 
     itens_ficha = FichaTecnica.query.filter_by(
@@ -541,16 +719,26 @@ def excluir_insumo(id):
 
     if itens_ficha:
         flash(
-            "Este insumo não pode ser excluído porque está em uma ficha técnica."
+            "Este insumo não pode ser excluído "
+            "porque está em uma ficha técnica."
         )
+
         return redirect(url_for("insumos"))
 
-    db.session.delete(insumo)
-    db.session.commit()
+    try:
+        db.session.delete(insumo)
+        db.session.commit()
 
-    flash("Insumo excluído com sucesso!")
+        flash("Insumo excluído com sucesso!")
+
+    except Exception:
+        db.session.rollback()
+
+        flash(
+            "Não foi possível excluir o insumo."
+        )
+
     return redirect(url_for("insumos"))
-
 
 @app.route("/produtos", methods=["GET", "POST"])
 def produtos():

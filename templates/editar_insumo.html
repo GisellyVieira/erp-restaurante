@@ -2,14 +2,22 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Editar Insumo</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
 </head>
+
 <body>
 
 <div class="layout">
 
     <aside class="sidebar">
+
         <div class="brand">
             <div class="logo-menu">🔥</div>
             <h2>ERP Restaurante</h2>
@@ -26,57 +34,254 @@
             <a href="{{ url_for('configuracoes') }}">Configurações</a>
             <a href="{{ url_for('logout') }}">Sair</a>
         </nav>
+
     </aside>
 
     <main class="conteudo">
 
         <header class="topo">
-            <h1>Editar Insumo</h1>
-            <p>Atualize as informações do item cadastrado.</p>
+
+            <div>
+                <h1>Editar Insumo</h1>
+                <p>
+                    Atualize os dados do item e os parâmetros
+                    utilizados na recomendação de compra.
+                </p>
+            </div>
+
         </header>
 
         <section class="painel">
 
-            <h2>{{ insumo.nome }}</h2>
+            <div class="cabecalho-secao-insumo">
+
+                <div>
+                    <span class="rotulo-edicao-insumo">
+                        Insumo selecionado
+                    </span>
+
+                    <h2>{{ insumo.nome }}</h2>
+
+                    <p>
+                        Altere apenas as informações necessárias.
+                    </p>
+                </div>
+
+                {% set lec = insumo.lote_economico() %}
+
+                <div class="resumo-lec-edicao">
+
+                    <small>Compra sugerida</small>
+
+                    {% if lec > 0 %}
+
+                        <strong>
+                            ≈ {{ "%.2f"|format(lec) }}
+                            {{ insumo.unidade }}
+                        </strong>
+
+                        <span>por compra</span>
+
+                    {% else %}
+
+                        <strong>—</strong>
+
+                        <span>
+                            Preencha os parâmetros
+                        </span>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
 
             <form method="POST" class="form-grid insumo-form">
 
-                <input
-                    type="text"
-                    name="nome"
-                    value="{{ insumo.nome }}"
-                    required
-                >
+                <div class="campo-formulario">
 
-                <select name="unidade" required>
+                    <label for="nome">
+                        Nome do insumo
+                    </label>
 
-                    <option value="kg" {% if insumo.unidade == "kg" %}selected{% endif %}>kg</option>
+                    <input
+                        type="text"
+                        id="nome"
+                        name="nome"
+                        value="{{ insumo.nome }}"
+                        required
+                    >
 
-                    <option value="g" {% if insumo.unidade == "g" %}selected{% endif %}>g</option>
+                </div>
 
-                    <option value="L" {% if insumo.unidade == "L" %}selected{% endif %}>Litro</option>
+                <div class="campo-formulario">
 
-                    <option value="ml" {% if insumo.unidade == "ml" %}selected{% endif %}>ml</option>
+                    <label for="unidade">
+                        Unidade de medida
+                    </label>
 
-                    <option value="un" {% if insumo.unidade == "un" %}selected{% endif %}>Unidade</option>
+                    <select
+                        id="unidade"
+                        name="unidade"
+                        required
+                    >
 
-                    <option value="pacote" {% if insumo.unidade == "pacote" %}selected{% endif %}>Pacote</option>
+                        <option
+                            value="kg"
+                            {% if insumo.unidade == "kg" %}selected{% endif %}
+                        >
+                            Quilograma (kg)
+                        </option>
 
-                    <option value="caixa" {% if insumo.unidade == "caixa" %}selected{% endif %}>Caixa</option>
+                        <option
+                            value="g"
+                            {% if insumo.unidade == "g" %}selected{% endif %}
+                        >
+                            Grama (g)
+                        </option>
 
-                </select>
+                        <option
+                            value="L"
+                            {% if insumo.unidade == "L" %}selected{% endif %}
+                        >
+                            Litro (L)
+                        </option>
 
-                <button type="submit">
-                    Salvar Alterações
-                </button>
+                        <option
+                            value="ml"
+                            {% if insumo.unidade == "ml" %}selected{% endif %}
+                        >
+                            Mililitro (ml)
+                        </option>
+
+                        <option
+                            value="un"
+                            {% if insumo.unidade == "un" %}selected{% endif %}
+                        >
+                            Unidade (un)
+                        </option>
+
+                        <option
+                            value="pacote"
+                            {% if insumo.unidade == "pacote" %}selected{% endif %}
+                        >
+                            Pacote
+                        </option>
+
+                        <option
+                            value="caixa"
+                            {% if insumo.unidade == "caixa" %}selected{% endif %}
+                        >
+                            Caixa
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <details class="parametros-lec" open>
+
+                    <summary>
+                        Parâmetros de compra
+
+                        <span>
+                            LEC
+                        </span>
+                    </summary>
+
+                    <div class="parametros-lec-conteudo">
+
+                        <div class="campo-formulario">
+
+                            <label for="demanda_mensal_estimada">
+                                Demanda mensal estimada
+                            </label>
+
+                            <input
+                                type="number"
+                                id="demanda_mensal_estimada"
+                                name="demanda_mensal_estimada"
+                                min="0"
+                                step="0.01"
+                                value="{{ insumo.demanda_mensal_estimada or 0 }}"
+                                placeholder="Ex.: 80"
+                            >
+
+                            <small>
+                                Quantidade estimada de consumo em um mês.
+                            </small>
+
+                        </div>
+
+                        <div class="campo-formulario">
+
+                            <label for="custo_pedido">
+                                Custo por pedido
+                            </label>
+
+                            <input
+                                type="number"
+                                id="custo_pedido"
+                                name="custo_pedido"
+                                min="0"
+                                step="0.01"
+                                value="{{ insumo.custo_pedido or 0 }}"
+                                placeholder="Ex.: 15,00"
+                            >
+
+                            <small>
+                                Gastos envolvidos na realização de uma compra.
+                            </small>
+
+                        </div>
+
+                        <div class="campo-formulario">
+
+                            <label for="percentual_armazenagem">
+                                Custo de armazenagem
+                            </label>
+
+                            <div class="input-com-sufixo">
+
+                                <input
+                                    type="number"
+                                    id="percentual_armazenagem"
+                                    name="percentual_armazenagem"
+                                    min="0"
+                                    step="0.01"
+                                    value="{{ insumo.percentual_armazenagem or 10 }}"
+                                >
+
+                                <span>%</span>
+
+                            </div>
+
+                            <small>
+                                Percentual estimado para manter o item em estoque.
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                </details>
+
+                <div class="acoes-formulario-edicao">
+
+                    <a
+                        class="btn-secundario-insumo"
+                        href="{{ url_for('insumos') }}"
+                    >
+                        Cancelar
+                    </a>
+
+                    <button type="submit">
+                        Salvar alterações
+                    </button>
+
+                </div>
 
             </form>
-
-            <br>
-
-            <a class="btn-pequeno" href="{{ url_for('insumos') }}">
-                Voltar
-            </a>
 
         </section>
 
