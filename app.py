@@ -213,12 +213,10 @@ def criar_banco():
 # AJUSTES NA TABELA VENDA
 # ==================================================
 
-if "venda" in tabelas:
-    colunas_venda = {
+    if "venda" in tabelas:
+        colunas_venda = {
         coluna["name"]
-        for coluna in inspector.get_columns(
-            "venda"
-        )
+        for coluna in inspector.get_columns("venda")
     }
 
     if "movimentou_estoque" not in colunas_venda:
