@@ -1852,6 +1852,69 @@ def vendas():
         vendas_retroativas=0,
         data_hoje=hoje.strftime("%Y-%m-%d"),
     )
+@app.route(
+    "/excluir_venda/<int:id>",
+    methods=["POST"],
+)
+def excluir_venda(id):
+    if not usuario_logado():
+        return redirect(url_for("login"))
+
+    venda = Venda.query.get_or_404(id)
+    produto = venda.produto
+
+    movimentou_estoque = bool(
+        venda.movimentou_estoque
+    )
+
+    try:
+        if movimentou_estoque:
+            movimentacoes = (
+                MovimentacaoEstoque.query.filter_by(
+                    venda_id=venda.id
+                ).all()
+            )
+
+            for movimentacao in movimentacoes:
+                db.session.delete(
+                    movimentacao
+                )
+
+            if (
+                produto
+                and produto.tipo_produto == "Revenda"
+            ):
+                produto.estoque_produto = (
+                    float(
+                        produto.estoque_produto or 0
+                    )
+                    + int(venda.quantidade or 0)
+                )
+
+        db.session.delete(venda)
+        db.session.commit()
+
+        flash(
+            "Venda excluída e estoque restaurado!",
+            "sucesso"
+        )
+
+    except Exception as erro:
+        db.session.rollback()
+
+        print(
+            f"Erro ao excluir venda: {repr(erro)}",
+            flush=True
+        )
+
+        traceback.print_exc()
+
+        flash(
+            "Não foi possível excluir a venda.",
+            "erro"
+        )
+
+    return redirect(url_for("vendas"))
 
 @app.route("/financeiro", methods=["GET", "POST"])
 def financeiro():
