@@ -1,10 +1,15 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Insumos - ERP Restaurante</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Insumos - Sistema de Gestão</title>
 
     <link
         rel="stylesheet"
@@ -16,11 +21,16 @@
 
 <div class="layout">
 
+    <!-- ==================================================
+         MENU LATERAL
+    =================================================== -->
+
     <aside class="sidebar">
 
         <div class="brand">
             <div class="logo-menu">🔥</div>
-            <h2>ERP Restaurante</h2>
+
+            <h2>Sistema de Gestão</h2>
         </div>
 
         <nav>
@@ -66,6 +76,10 @@
 
     </aside>
 
+    <!-- ==================================================
+         CONTEÚDO PRINCIPAL
+    =================================================== -->
+
     <main class="conteudo">
 
         <!-- ==================================================
@@ -98,7 +112,8 @@
 
                 <p>
                     Cadastre insumos, registre compras e
-                    acompanhe as necessidades de reposição.
+                    acompanhe automaticamente as necessidades
+                    de reposição.
                 </p>
             </div>
 
@@ -111,13 +126,16 @@
         <section class="painel">
 
             <div class="cabecalho-secao-insumo">
+
                 <div>
                     <h2>Novo Insumo</h2>
 
                     <p>
-                        Informe os dados básicos do item.
+                        Informe o nome e a unidade de medida
+                        utilizada para controlar o item.
                     </p>
                 </div>
+
             </div>
 
             <form
@@ -125,7 +143,10 @@
                 class="form-grid insumo-form"
             >
 
+                <!-- NOME DO INSUMO -->
+
                 <div class="campo-formulario">
+
                     <label for="nome">
                         Nome do insumo
                     </label>
@@ -135,11 +156,16 @@
                         id="nome"
                         name="nome"
                         placeholder="Ex.: Carne bovina"
+                        autocomplete="off"
                         required
                     >
+
                 </div>
 
+                <!-- UNIDADE DE MEDIDA -->
+
                 <div class="campo-formulario">
+
                     <label for="unidade">
                         Unidade de medida
                     </label>
@@ -149,6 +175,7 @@
                         name="unidade"
                         required
                     >
+
                         <option value="">
                             Selecione
                         </option>
@@ -180,8 +207,12 @@
                         <option value="caixa">
                             Caixa
                         </option>
+
                     </select>
+
                 </div>
+
+                <!-- CATEGORIA PADRÃO -->
 
                 <input
                     type="hidden"
@@ -189,92 +220,42 @@
                     value="Matéria-prima"
                 >
 
+                <!-- PARÂMETROS PADRÃO -->
+                <!--
+                    Estes campos são enviados de forma oculta
+                    apenas para manter compatibilidade com a
+                    rota e com as colunas existentes no banco.
+
+                    A compra sugerida não depende destes campos.
+                -->
+
+                <input
+                    type="hidden"
+                    name="demanda_mensal_estimada"
+                    value="0"
+                >
+
+                <input
+                    type="hidden"
+                    name="custo_pedido"
+                    value="20"
+                >
+
+                <input
+                    type="hidden"
+                    name="percentual_armazenagem"
+                    value="10"
+                >
+
+                <!-- BOTÃO -->
+
                 <div class="campo-botao-insumo">
+
                     <button type="submit">
                         Cadastrar Insumo
                     </button>
+
                 </div>
-
-                <!--
-                    Os parâmetros do LEC ficam recolhidos
-                    para não poluir visualmente a tela.
-                -->
-
-                <details class="parametros-lec">
-
-                    <summary>
-                        Parâmetros de compra
-                        <span>Opcional</span>
-                    </summary>
-
-                    <div class="parametros-lec-conteudo">
-
-                        <div class="campo-formulario">
-                            <label for="demanda_mensal_estimada">
-                                Demanda mensal estimada
-                            </label>
-
-                            <input
-                                type="number"
-                                id="demanda_mensal_estimada"
-                                name="demanda_mensal_estimada"
-                                min="0"
-                                step="0.01"
-                                value="0"
-                                placeholder="Ex.: 80"
-                            >
-
-                            <small>
-                                Quantidade estimada para um mês.
-                            </small>
-                        </div>
-
-                        <div class="campo-formulario">
-                            <label for="custo_pedido">
-                                Custo por pedido
-                            </label>
-
-                            <input
-                                type="number"
-                                id="custo_pedido"
-                                name="custo_pedido"
-                                min="0"
-                                step="0.01"
-                                value="0"
-                                placeholder="Ex.: 15,00"
-                            >
-
-                            <small>
-                                Gastos envolvidos em cada compra.
-                            </small>
-                        </div>
-
-                        <div class="campo-formulario">
-                            <label for="percentual_armazenagem">
-                                Custo de armazenagem
-                            </label>
-
-                            <div class="input-com-sufixo">
-                                <input
-                                    type="number"
-                                    id="percentual_armazenagem"
-                                    name="percentual_armazenagem"
-                                    min="0"
-                                    step="0.01"
-                                    value="10"
-                                >
-
-                                <span>%</span>
-                            </div>
-
-                            <small>
-                                Percentual estimado para manter o item.
-                            </small>
-                        </div>
-
-                    </div>
-
-                </details>
 
             </form>
 
@@ -292,12 +273,17 @@
                     <h2>Controle de Insumos</h2>
 
                     <p>
-                        Consulte o estoque e registre as compras.
+                        Consulte o saldo atual, identifique
+                        necessidades de reposição e registre
+                        novas compras.
                     </p>
                 </div>
 
                 <div class="busca-insumo">
-                    <span aria-hidden="true">🔍</span>
+
+                    <span aria-hidden="true">
+                        🔍
+                    </span>
 
                     <input
                         type="text"
@@ -305,6 +291,7 @@
                         placeholder="Buscar insumo..."
                         autocomplete="off"
                     >
+
                 </div>
 
             </div>
@@ -314,21 +301,31 @@
                 <table class="tabela-insumos">
 
                     <thead>
+
                         <tr>
                             <th>Insumo</th>
+
                             <th>Estoque atual</th>
+
                             <th>Custo médio</th>
+
                             <th>Status</th>
 
                             <th
-                                title="Quantidade aproximada recomendada para cada compra."
+                                title="
+                                    Quantidade recomendada pelo
+                                    método Min–Max quando o estoque
+                                    atinge o ponto de pedido.
+                                "
                             >
                                 Compra sugerida
                             </th>
 
                             <th>Registrar compra</th>
+
                             <th>Ações</th>
                         </tr>
+
                     </thead>
 
                     <tbody>
@@ -336,13 +333,21 @@
                     {% for i in insumos %}
 
                         {% set status = i.status_estoque() %}
-                        {% set lec = i.lote_economico() %}
+
+                        {% set compra = i.compra_sugerida() %}
+
+                        {% set ponto_pedido = i.ponto_pedido() %}
+
+                        {% set estoque_maximo = i.estoque_maximo() %}
 
                         <tr>
 
-                            <!-- INSUMO -->
+                            <!-- ==================================
+                                 INSUMO
+                            =================================== -->
 
                             <td>
+
                                 <div class="identificacao-insumo">
 
                                     <strong>
@@ -354,15 +359,23 @@
                                     </small>
 
                                 </div>
+
                             </td>
 
-                            <!-- ESTOQUE ATUAL -->
+                            <!-- ==================================
+                                 ESTOQUE ATUAL
+                            =================================== -->
 
                             <td>
+
                                 <div class="valor-estoque-insumo">
 
                                     <strong>
-                                        {{ "%.2f"|format(i.estoque_atual()) }}
+                                        {{
+                                            "%.2f"|format(
+                                                i.estoque_atual()
+                                            )
+                                        }}
                                     </strong>
 
                                     <span>
@@ -370,16 +383,24 @@
                                     </span>
 
                                 </div>
+
                             </td>
 
-                            <!-- CUSTO MÉDIO -->
+                            <!-- ==================================
+                                 CUSTO MÉDIO
+                            =================================== -->
 
                             <td>
+
                                 <div class="valor-custo-insumo">
 
                                     <strong>
                                         R$
-                                        {{ "%.2f"|format(i.custo_medio_unitario()) }}
+                                        {{
+                                            "%.2f"|format(
+                                                i.custo_medio_unitario()
+                                            )
+                                        }}
                                     </strong>
 
                                     <small>
@@ -387,9 +408,12 @@
                                     </small>
 
                                 </div>
+
                             </td>
 
-                            <!-- STATUS -->
+                            <!-- ==================================
+                                 STATUS
+                            =================================== -->
 
                             <td>
 
@@ -397,12 +421,6 @@
 
                                     <span class="status alerta">
                                         Sem estoque
-                                    </span>
-
-                                {% elif status == "Abaixo do mínimo" %}
-
-                                    <span class="status alerta">
-                                        Abaixo do mínimo
                                     </span>
 
                                 {% elif status == "Ponto de pedido" %}
@@ -427,27 +445,48 @@
 
                             </td>
 
-                            <!-- COMPRA SUGERIDA / LEC -->
+                            <!-- ==================================
+                                 COMPRA SUGERIDA — MIN–MAX
+                            =================================== -->
 
                             <td>
 
-                                {% if lec > 0 %}
+                                {% if compra > 0 %}
 
                                     <div
-                                        class="compra-sugerida
-                                        {% if status != 'Normal' %}
+                                        class="
+                                            compra-sugerida
                                             compra-sugerida-destaque
-                                        {% endif %}"
-                                        title="Quantidade aproximada recomendada pelo Lote Econômico de Compra."
+                                        "
+                                        title="
+                                            Estoque atual:
+                                            {{ '%.2f'|format(i.estoque_atual()) }}
+                                            {{ i.unidade }}.
+
+                                            Ponto de pedido:
+                                            {{ '%.2f'|format(ponto_pedido) }}
+                                            {{ i.unidade }}.
+
+                                            Estoque máximo:
+                                            {{ '%.2f'|format(estoque_maximo) }}
+                                            {{ i.unidade }}.
+                                        "
                                     >
 
                                         <span class="compra-sugerida-valor">
-                                            ≈ {{ "%.2f"|format(lec) }}
+
+                                            {{
+                                                "%.2f"|format(
+                                                    compra
+                                                )
+                                            }}
+
                                             {{ i.unidade }}
+
                                         </span>
 
                                         <small>
-                                            por compra
+                                            Repor até o estoque máximo
                                         </small>
 
                                     </div>
@@ -455,14 +494,20 @@
                                 {% else %}
 
                                     <div
-                                        class="compra-sugerida-indisponivel"
-                                        title="Informe os parâmetros de compra na edição do insumo."
+                                        class="
+                                            compra-sugerida-indisponivel
+                                        "
+                                        title="
+                                            O estoque ainda não atingiu
+                                            o ponto de pedido ou não há
+                                            histórico de consumo suficiente.
+                                        "
                                     >
 
                                         <span>—</span>
 
                                         <small>
-                                            Não calculado
+                                            Compra não necessária
                                         </small>
 
                                     </div>
@@ -471,17 +516,24 @@
 
                             </td>
 
-                            <!-- REGISTRAR COMPRA -->
+                            <!-- ==================================
+                                 REGISTRAR COMPRA
+                            =================================== -->
 
                             <td>
 
                                 <form
                                     method="POST"
-                                    action="{{ url_for(
-                                        'entrada_estoque',
-                                        insumo_id=i.id
-                                    ) }}"
-                                    class="form-compra form-compra-profissional"
+                                    action="{{
+                                        url_for(
+                                            'entrada_estoque',
+                                            insumo_id=i.id
+                                        )
+                                    }}"
+                                    class="
+                                        form-compra
+                                        form-compra-profissional
+                                    "
                                 >
 
                                     <input
@@ -490,7 +542,9 @@
                                         step="0.01"
                                         name="quantidade"
                                         placeholder="Quantidade"
-                                        aria-label="Quantidade comprada"
+                                        aria-label="
+                                            Quantidade comprada
+                                        "
                                         required
                                     >
 
@@ -500,7 +554,9 @@
                                         step="0.01"
                                         name="valor_total"
                                         placeholder="Valor pago"
-                                        aria-label="Valor total pago"
+                                        aria-label="
+                                            Valor total pago
+                                        "
                                         required
                                     >
 
@@ -512,7 +568,9 @@
 
                             </td>
 
-                            <!-- AÇÕES -->
+                            <!-- ==================================
+                                 AÇÕES
+                            =================================== -->
 
                             <td>
 
@@ -520,23 +578,29 @@
 
                                     <a
                                         class="btn-editar"
-                                        href="{{ url_for(
-                                            'editar_insumo',
-                                            id=i.id
-                                        ) }}"
+                                        href="{{
+                                            url_for(
+                                                'editar_insumo',
+                                                id=i.id
+                                            )
+                                        }}"
                                     >
                                         Editar
                                     </a>
 
                                     <a
                                         class="btn-excluir"
-                                        href="{{ url_for(
-                                            'excluir_insumo',
-                                            id=i.id
-                                        ) }}"
-                                        onclick="return confirmarExclusao(
-                                            '{{ i.nome|e }}'
-                                        )"
+                                        href="{{
+                                            url_for(
+                                                'excluir_insumo',
+                                                id=i.id
+                                            )
+                                        }}"
+                                        onclick="
+                                            return confirmarExclusao(
+                                                '{{ i.nome|e }}'
+                                            )
+                                        "
                                     >
                                         Excluir
                                     </a>
@@ -550,12 +614,14 @@
                     {% else %}
 
                         <tr>
+
                             <td
                                 colspan="7"
                                 class="vazio"
                             >
                                 Nenhum insumo cadastrado.
                             </td>
+
                         </tr>
 
                     {% endfor %}
@@ -572,35 +638,56 @@
 
 </div>
 
+<!-- ==================================================
+     SCRIPTS
+=================================================== -->
+
 <script>
-    const campoBusca = document.getElementById("buscarInsumo");
+
+    const campoBusca = document.getElementById(
+        "buscarInsumo"
+    );
 
     if (campoBusca) {
-        campoBusca.addEventListener("input", function () {
-            const filtro = this.value
-                .toLowerCase()
-                .trim();
 
-            const linhas = document.querySelectorAll(
-                ".tabela-insumos tbody tr"
-            );
+        campoBusca.addEventListener(
+            "input",
+            function () {
 
-            linhas.forEach(function (linha) {
-                const texto = linha.innerText.toLowerCase();
+                const filtro = this.value
+                    .toLowerCase()
+                    .trim();
 
-                linha.style.display = texto.includes(filtro)
-                    ? ""
-                    : "none";
-            });
-        });
+                const linhas = document.querySelectorAll(
+                    ".tabela-insumos tbody tr"
+                );
+
+                linhas.forEach(
+                    function (linha) {
+
+                        const texto = linha
+                            .innerText
+                            .toLowerCase();
+
+                        linha.style.display =
+                            texto.includes(filtro)
+                                ? ""
+                                : "none";
+                    }
+                );
+            }
+        );
     }
 
     function confirmarExclusao(nomeInsumo) {
+
         return confirm(
             `Deseja realmente excluir o insumo "${nomeInsumo}"?`
         );
     }
+
 </script>
 
 </body>
+
 </html>

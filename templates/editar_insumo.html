@@ -1,8 +1,13 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>Editar Insumo</title>
 
@@ -20,19 +25,49 @@
 
         <div class="brand">
             <div class="logo-menu">🔥</div>
+
             <h2>ERP Restaurante</h2>
         </div>
 
         <nav>
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a class="ativo" href="{{ url_for('insumos') }}">Insumos</a>
-            <a href="{{ url_for('produtos') }}">Produtos</a>
-            <a href="{{ url_for('ficha_tecnica') }}">Ficha Técnica</a>
-            <a href="{{ url_for('vendas') }}">Vendas</a>
-            <a href="{{ url_for('financeiro') }}">Caixa</a>
-            <a href="{{ url_for('relatorios') }}">Relatórios</a>
-            <a href="{{ url_for('configuracoes') }}">Configurações</a>
-            <a href="{{ url_for('logout') }}">Sair</a>
+            <a href="{{ url_for('dashboard') }}">
+                Dashboard
+            </a>
+
+            <a
+                class="ativo"
+                href="{{ url_for('insumos') }}"
+            >
+                Insumos
+            </a>
+
+            <a href="{{ url_for('produtos') }}">
+                Produtos
+            </a>
+
+            <a href="{{ url_for('ficha_tecnica') }}">
+                Ficha Técnica
+            </a>
+
+            <a href="{{ url_for('vendas') }}">
+                Vendas
+            </a>
+
+            <a href="{{ url_for('financeiro') }}">
+                Caixa
+            </a>
+
+            <a href="{{ url_for('relatorios') }}">
+                Relatórios
+            </a>
+
+            <a href="{{ url_for('configuracoes') }}">
+                Configurações
+            </a>
+
+            <a href="{{ url_for('logout') }}">
+                Sair
+            </a>
         </nav>
 
     </aside>
@@ -43,9 +78,10 @@
 
             <div>
                 <h1>Editar Insumo</h1>
+
                 <p>
-                    Atualize os dados do item e os parâmetros
-                    utilizados na recomendação de compra.
+                    Atualize o nome ou a unidade de medida
+                    utilizada no controle do item.
                 </p>
             </div>
 
@@ -60,34 +96,42 @@
                         Insumo selecionado
                     </span>
 
-                    <h2>{{ insumo.nome }}</h2>
+                    <h2>
+                        {{ insumo.nome }}
+                    </h2>
 
                     <p>
                         Altere apenas as informações necessárias.
                     </p>
                 </div>
 
-                {% set lec = insumo.lote_economico() %}
+                {% set compra = insumo.compra_sugerida() %}
+                {% set ponto_pedido = insumo.ponto_pedido() %}
+                {% set estoque_maximo = insumo.estoque_maximo() %}
 
                 <div class="resumo-lec-edicao">
 
-                    <small>Compra sugerida</small>
+                    <small>
+                        Compra sugerida
+                    </small>
 
-                    {% if lec > 0 %}
+                    {% if compra > 0 %}
 
                         <strong>
-                            ≈ {{ "%.2f"|format(lec) }}
+                            {{ "%.2f"|format(compra) }}
                             {{ insumo.unidade }}
                         </strong>
 
-                        <span>por compra</span>
+                        <span>
+                            Repor até o estoque máximo
+                        </span>
 
                     {% else %}
 
                         <strong>—</strong>
 
                         <span>
-                            Preencha os parâmetros
+                            Compra não necessária
                         </span>
 
                     {% endif %}
@@ -96,7 +140,10 @@
 
             </div>
 
-            <form method="POST" class="form-grid insumo-form">
+            <form
+                method="POST"
+                class="form-grid insumo-form"
+            >
 
                 <div class="campo-formulario">
 
@@ -109,6 +156,7 @@
                         id="nome"
                         name="nome"
                         value="{{ insumo.nome }}"
+                        autocomplete="off"
                         required
                     >
 
@@ -128,49 +176,63 @@
 
                         <option
                             value="kg"
-                            {% if insumo.unidade == "kg" %}selected{% endif %}
+                            {% if insumo.unidade == "kg" %}
+                                selected
+                            {% endif %}
                         >
                             Quilograma (kg)
                         </option>
 
                         <option
                             value="g"
-                            {% if insumo.unidade == "g" %}selected{% endif %}
+                            {% if insumo.unidade == "g" %}
+                                selected
+                            {% endif %}
                         >
                             Grama (g)
                         </option>
 
                         <option
                             value="L"
-                            {% if insumo.unidade == "L" %}selected{% endif %}
+                            {% if insumo.unidade == "L" %}
+                                selected
+                            {% endif %}
                         >
                             Litro (L)
                         </option>
 
                         <option
                             value="ml"
-                            {% if insumo.unidade == "ml" %}selected{% endif %}
+                            {% if insumo.unidade == "ml" %}
+                                selected
+                            {% endif %}
                         >
                             Mililitro (ml)
                         </option>
 
                         <option
                             value="un"
-                            {% if insumo.unidade == "un" %}selected{% endif %}
+                            {% if insumo.unidade == "un" %}
+                                selected
+                            {% endif %}
                         >
                             Unidade (un)
                         </option>
 
                         <option
                             value="pacote"
-                            {% if insumo.unidade == "pacote" %}selected{% endif %}
+                            {% if insumo.unidade == "pacote" %}
+                                selected
+                            {% endif %}
                         >
                             Pacote
                         </option>
 
                         <option
                             value="caixa"
-                            {% if insumo.unidade == "caixa" %}selected{% endif %}
+                            {% if insumo.unidade == "caixa" %}
+                                selected
+                            {% endif %}
                         >
                             Caixa
                         </option>
@@ -179,92 +241,11 @@
 
                 </div>
 
-                <details class="parametros-lec" open>
-
-                    <summary>
-                        Parâmetros de compra
-
-                        <span>
-                            LEC
-                        </span>
-                    </summary>
-
-                    <div class="parametros-lec-conteudo">
-
-                        <div class="campo-formulario">
-
-                            <label for="demanda_mensal_estimada">
-                                Demanda mensal estimada
-                            </label>
-
-                            <input
-                                type="number"
-                                id="demanda_mensal_estimada"
-                                name="demanda_mensal_estimada"
-                                min="0"
-                                step="0.01"
-                                value="{{ insumo.demanda_mensal_estimada or 0 }}"
-                                placeholder="Ex.: 80"
-                            >
-
-                            <small>
-                                Quantidade estimada de consumo em um mês.
-                            </small>
-
-                        </div>
-
-                        <div class="campo-formulario">
-
-                            <label for="custo_pedido">
-                                Custo por pedido
-                            </label>
-
-                            <input
-                                type="number"
-                                id="custo_pedido"
-                                name="custo_pedido"
-                                min="0"
-                                step="0.01"
-                                value="{{ insumo.custo_pedido or 0 }}"
-                                placeholder="Ex.: 15,00"
-                            >
-
-                            <small>
-                                Gastos envolvidos na realização de uma compra.
-                            </small>
-
-                        </div>
-
-                        <div class="campo-formulario">
-
-                            <label for="percentual_armazenagem">
-                                Custo de armazenagem
-                            </label>
-
-                            <div class="input-com-sufixo">
-
-                                <input
-                                    type="number"
-                                    id="percentual_armazenagem"
-                                    name="percentual_armazenagem"
-                                    min="0"
-                                    step="0.01"
-                                    value="{{ insumo.percentual_armazenagem or 10 }}"
-                                >
-
-                                <span>%</span>
-
-                            </div>
-
-                            <small>
-                                Percentual estimado para manter o item em estoque.
-                            </small>
-
-                        </div>
-
-                    </div>
-
-                </details>
+                <input
+                    type="hidden"
+                    name="categoria"
+                    value="{{ insumo.categoria or 'Matéria-prima' }}"
+                >
 
                 <div class="acoes-formulario-edicao">
 
@@ -285,9 +266,84 @@
 
         </section>
 
+        <section class="painel">
+
+            <div class="cabecalho-secao-insumo">
+
+                <div>
+                    <h2>
+                        Situação atual do estoque
+                    </h2>
+
+                    <p>
+                        Informações calculadas automaticamente
+                        a partir das movimentações registradas.
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="grid-3">
+
+                <div class="card">
+
+                    <span>
+                        Estoque atual
+                    </span>
+
+                    <strong>
+                        {{
+                            "%.2f"|format(
+                                insumo.estoque_atual()
+                            )
+                        }}
+                        {{ insumo.unidade }}
+                    </strong>
+
+                </div>
+
+                <div class="card">
+
+                    <span>
+                        Ponto de pedido
+                    </span>
+
+                    <strong>
+                        {{
+                            "%.2f"|format(
+                                ponto_pedido
+                            )
+                        }}
+                        {{ insumo.unidade }}
+                    </strong>
+
+                </div>
+
+                <div class="card">
+
+                    <span>
+                        Estoque máximo
+                    </span>
+
+                    <strong>
+                        {{
+                            "%.2f"|format(
+                                estoque_maximo
+                            )
+                        }}
+                        {{ insumo.unidade }}
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </section>
+
     </main>
 
 </div>
 
 </body>
+
 </html>

@@ -493,60 +493,65 @@ def insumos():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        nome = request.form.get("nome", "").strip()
-        unidade = request.form.get("unidade", "").strip()
-        categoria = request.form.get(
-            "categoria",
-            "Matéria-prima",
+
+        nome = request.form.get(
+            "nome",
+            ""
         ).strip()
 
-        demanda_mensal_estimada = converter_float(
-            request.form.get("demanda_mensal_estimada")
-        )
+        unidade = request.form.get(
+            "unidade",
+            ""
+        ).strip()
 
-        custo_pedido = converter_float(
-            request.form.get("custo_pedido")
-        )
+        categoria = request.form.get(
+            "categoria",
+            "Matéria-prima"
+        ).strip()
 
-        percentual_armazenagem = converter_float(
-            request.form.get("percentual_armazenagem")
-        )
-
-        if percentual_armazenagem <= 0:
-            percentual_armazenagem = 10
-
-        if not nome or not unidade:
-            flash("Preencha o nome e a unidade do insumo.")
+        if not nome:
+            flash(
+                "Informe o nome do insumo."
+            )
             return redirect(url_for("insumos"))
 
-        if demanda_mensal_estimada < 0:
-            flash("A demanda mensal não pode ser negativa.")
-            return redirect(url_for("insumos"))
-
-        if custo_pedido < 0:
-            flash("O custo por pedido não pode ser negativo.")
+        if not unidade:
+            flash(
+                "Selecione a unidade de medida."
+            )
             return redirect(url_for("insumos"))
 
         try:
+
             novo = Insumo(
                 nome=nome,
                 unidade=unidade,
-                categoria=categoria or "Matéria-prima",
-                demanda_mensal_estimada=demanda_mensal_estimada,
-                custo_pedido=custo_pedido,
-                percentual_armazenagem=percentual_armazenagem,
+                categoria=categoria or "Matéria-prima"
             )
 
             db.session.add(novo)
             db.session.commit()
 
-            flash("Insumo cadastrado com sucesso!")
+            flash(
+                "Insumo cadastrado com sucesso!"
+            )
 
-        except Exception:
+        except Exception as erro:
+
             db.session.rollback()
-            flash("Não foi possível cadastrar o insumo.")
 
-        return redirect(url_for("insumos"))
+            print(
+                erro,
+                flush=True
+            )
+
+            flash(
+                "Não foi possível cadastrar o insumo."
+            )
+
+        return redirect(
+            url_for("insumos")
+        )
 
     lista = Insumo.query.order_by(
         Insumo.nome.asc()
@@ -554,7 +559,7 @@ def insumos():
 
     return render_template(
         "insumos.html",
-        insumos=lista,
+        insumos=lista
     )
 
 
@@ -625,106 +630,88 @@ def entrada_estoque(insumo_id):
     methods=["GET", "POST"]
 )
 def editar_insumo(id):
+
     if not usuario_logado():
         return redirect(url_for("login"))
 
     insumo = Insumo.query.get_or_404(id)
 
     if request.method == "POST":
-        nome = request.form.get("nome", "").strip()
-        unidade = request.form.get("unidade", "").strip()
-        categoria = request.form.get(
-            "categoria",
-            "Matéria-prima",
+
+        nome = request.form.get(
+            "nome",
+            ""
         ).strip()
 
-        demanda_mensal_estimada = converter_float(
-            request.form.get("demanda_mensal_estimada")
-        )
+        unidade = request.form.get(
+            "unidade",
+            ""
+        ).strip()
 
-        custo_pedido = converter_float(
-            request.form.get("custo_pedido")
-        )
+        categoria = request.form.get(
+            "categoria",
+            "Matéria-prima"
+        ).strip()
 
-        percentual_armazenagem = converter_float(
-            request.form.get("percentual_armazenagem")
-        )
+        if not nome:
 
-        if percentual_armazenagem <= 0:
-            percentual_armazenagem = 10
-
-        if not nome or not unidade:
-            flash("Preencha o nome e a unidade do insumo.")
+            flash(
+                "Informe o nome do insumo."
+            )
 
             return redirect(
                 url_for(
                     "editar_insumo",
-                    id=insumo.id,
+                    id=id
                 )
             )
 
-        if demanda_mensal_estimada < 0:
-            flash("A demanda mensal não pode ser negativa.")
+        if not unidade:
 
-            return redirect(
-                url_for(
-                    "editar_insumo",
-                    id=insumo.id,
-                )
+            flash(
+                "Selecione a unidade."
             )
 
-        if custo_pedido < 0:
-            flash("O custo por pedido não pode ser negativo.")
-
             return redirect(
                 url_for(
                     "editar_insumo",
-                    id=insumo.id,
+                    id=id
                 )
             )
 
         try:
+
             insumo.nome = nome
             insumo.unidade = unidade
-            insumo.categoria = (
-                categoria or "Matéria-prima"
-            )
-
-            insumo.demanda_mensal_estimada = (
-                demanda_mensal_estimada
-            )
-
-            insumo.custo_pedido = custo_pedido
-
-            insumo.percentual_armazenagem = (
-                percentual_armazenagem
-            )
+            insumo.categoria = categoria
 
             db.session.commit()
 
-            flash("Insumo atualizado com sucesso!")
+            flash(
+                "Insumo atualizado com sucesso!"
+            )
 
-        except Exception:
+        except Exception as erro:
+
             db.session.rollback()
+
+            print(
+                erro,
+                flush=True
+            )
 
             flash(
                 "Não foi possível atualizar o insumo."
             )
 
-            return redirect(
-                url_for(
-                    "editar_insumo",
-                    id=insumo.id,
-                )
-            )
-
-        return redirect(url_for("insumos"))
+        return redirect(
+            url_for("insumos")
+        )
 
     return render_template(
         "editar_insumo.html",
-        insumo=insumo,
+        insumo=insumo
     )
-
 
 @app.route(
     "/excluir_insumo/<int:id>",

@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 import math
 
 
@@ -50,8 +50,10 @@ class Insumo(db.Model):
     )
 
     # =====================================================
-    # DADOS PARA O LOTE ECONÔMICO DE COMPRA — LEC
+    # CAMPOS MANTIDOS PARA COMPATIBILIDADE COM O BANCO
     # =====================================================
+    # Não serão mais preenchidos manualmente nem utilizados
+    # diretamente na compra sugerida.
 
     demanda_mensal_estimada = db.Column(
         db.Float,
@@ -79,91 +81,287 @@ class Insumo(db.Model):
     )
 
     # =====================================================
-    # MOVIMENTAÇÕES
+    # PARÂMETROS FIXOS DO SISTEMA
+    # =====================================================
+
+    CUSTO_PEDIDO_PADRAO = 20.00
+
+    PERCENTUAL_ARMAZENAGEM_PADRAO = 10.00
+
+    FATOR_ESTOQUE_SEGURANCA = 0.10
+
+    TEMPO_REPOSICAO_DIAS = 2
+
+    CICLO_REVISAO_DIAS = 7
+
+    PERIODO_ANALISE_DIAS = 30
+
+    # =====================================================
+    # MOVIMENTAÇÕES DE ESTOQUE
     # =====================================================
 
     def entradas(self):
         return sum(
-            float(movimentacao.quantidade or 0)
+            float(
+                movimentacao.quantidade or 0
+            )
             for movimentacao in self.movimentacoes
             if movimentacao.tipo == "Entrada"
         )
 
     def saidas(self):
         return sum(
-            float(movimentacao.quantidade or 0)
+            float(
+                movimentacao.quantidade or 0
+            )
             for movimentacao in self.movimentacoes
             if movimentacao.tipo == "Saída"
         )
 
     def estoque_atual(self):
-        return self.entradas() - self.saidas()
+        return (
+            self.entradas()
+            - self.saidas()
+        )
 
     def valor_total_entradas(self):
         return sum(
-            float(movimentacao.valor_total or 0)
+            float(
+                movimentacao.valor_total or 0
+            )
             for movimentacao in self.movimentacoes
             if movimentacao.tipo == "Entrada"
         )
 
     # =====================================================
-    # CUSTO MÉDIO
+    # CUSTO MÉDIO UNITÁRIO
     # =====================================================
 
     def custo_medio_unitario(self):
-        entradas = self.entradas()
+        quantidade_total = float(
+            self.entradas() or 0
+        )
 
-        if entradas <= 0:
+        valor_total = float(
+            self.valor_total_entradas() or 0
+        )
+
+        if quantidade_total <= 0:
+            return 0
+
+        if valor_total <= 0:
             return 0
 
         return (
-            self.valor_total_entradas()
-            / entradas
+            valor_total
+            / quantidade_total
         )
 
     # =====================================================
-    # CONSUMO E ESTOQUE DE SEGURANÇA
+    # CONSUMO DOS ÚLTIMOS 30 DIAS
     # =====================================================
+
+    def consumo_ultimos_30_dias(self):
+        data_limite = (
+            datetime.now()
+            - timedelta(
+                days=self.PERIODO_ANALISE_DIAS
+            )
+        )
+
+        quantidade_total = 0.0
+
+        for movimentacao in self.movimentacoes:
+            if movimentacao.tipo != "Saída":
+                continue
+
+            data_movimentacao = getattr(
+                movimentacao,
+                "data",
+                None
+            )
+
+            if data_movimentacao is None:
+                continue
+
+            # Caso o campo esteja como Date em vez de DateTime.
+            if (
+                hasattr(data_movimentacao, "year")
+                and not isinstance(
+                    data_movimentacao,
+                    datetime
+                )
+            ):
+                data_movimentacao = datetime.combine(
+                    data_movimentacao,
+                    datetime.min.time()
+                )
+
+            if data_movimentacao >= data_limite:
+                quantidade_total += float(
+                    movimentacao.quantidade or 0
+                )
+
+        return quantidade_total
 
     def consumo_medio_diario(self):
-        saidas = [
-            movimentacao
-            for movimentacao in self.movimentacoes
-            if movimentacao.tipo == "Saída"
-        ]
+        consumo_periodo = float(
+            self.consumo_ultimos_30_dias() or 0
+        )
 
-        if not saidas:
+        if consumo_periodo <= 0:
             return 0
 
-        quantidade_total = sum(
-            float(movimentacao.quantidade or 0)
-            for movimentacao in saidas
+        return (
+            consumo_periodo
+            / self.PERIODO_ANALISE_DIAS
         )
 
-        return quantidade_total / 30
+    def demanda_mensal_calculada(self):
+        consumo_diario = float(
+            self.consumo_medio_diario() or 0
+        )
+
+        if consumo_diario <= 0:
+            return 0
+
+        return (
+            consumo_diario
+            * 30
+        )
+
+    def demanda_anual_estimada(self):
+        consumo_diario = float(
+            self.consumo_medio_diario() or 0
+        )
+
+        if consumo_diario <= 0:
+            return 0
+
+        return (
+            consumo_diario
+            * 365
+        )
+
+    # =====================================================
+    # ESTOQUE DE SEGURANÇA
+    # =====================================================
 
     def estoque_seguranca(self):
-        return (
-            self.consumo_medio_diario()
-            * 0.10
+        consumo_diario = float(
+            self.consumo_medio_diario() or 0
         )
 
-    def ponto_pedido(self):
-        consumo = self.consumo_medio_diario()
+        if consumo_diario <= 0:
+            return 0
 
-        # Tempo médio de reposição considerado:
-        # 2 dias.
-        tempo_reposicao = 2
+        consumo_durante_reposicao = (
+            consumo_diario
+            * self.TEMPO_REPOSICAO_DIAS
+        )
 
         return (
-            consumo * tempo_reposicao
-        ) + self.estoque_seguranca()
+            consumo_durante_reposicao
+            * self.FATOR_ESTOQUE_SEGURANCA
+        )
+
+    # =====================================================
+    # PONTO DE PEDIDO
+    # =====================================================
+
+    def ponto_pedido(self):
+        consumo_diario = float(
+            self.consumo_medio_diario() or 0
+        )
+
+        if consumo_diario <= 0:
+            return 0
+
+        demanda_durante_reposicao = (
+            consumo_diario
+            * self.TEMPO_REPOSICAO_DIAS
+        )
+
+        return (
+            demanda_durante_reposicao
+            + self.estoque_seguranca()
+        )
+
+    # =====================================================
+    # ESTOQUE MÍNIMO
+    # =====================================================
 
     def estoque_minimo(self):
         return self.ponto_pedido()
 
     # =====================================================
-    # LOTE ECONÔMICO DE COMPRA — LEC
+    # ESTOQUE MÁXIMO — MÉTODO MIN–MAX
+    # =====================================================
+    # O estoque máximo cobre:
+    # - o tempo de reposição;
+    # - o ciclo de revisão das compras;
+    # - o estoque de segurança.
+
+    def estoque_maximo(self):
+        consumo_diario = float(
+            self.consumo_medio_diario() or 0
+        )
+
+        if consumo_diario <= 0:
+            return 0
+
+        dias_de_cobertura = (
+            self.TEMPO_REPOSICAO_DIAS
+            + self.CICLO_REVISAO_DIAS
+        )
+
+        demanda_para_cobertura = (
+            consumo_diario
+            * dias_de_cobertura
+        )
+
+        return (
+            demanda_para_cobertura
+            + self.estoque_seguranca()
+        )
+
+    # =====================================================
+    # COMPRA SUGERIDA — MÉTODO MIN–MAX
+    # =====================================================
+
+    def compra_sugerida(self):
+        estoque_atual = float(
+            self.estoque_atual() or 0
+        )
+
+        ponto_pedido = float(
+            self.ponto_pedido() or 0
+        )
+
+        estoque_maximo = float(
+            self.estoque_maximo() or 0
+        )
+
+        if estoque_maximo <= 0:
+            return 0
+
+        # A compra somente é recomendada quando o saldo
+        # atingir ou ficar abaixo do ponto de pedido.
+        if estoque_atual <= ponto_pedido:
+            quantidade = (
+                estoque_maximo
+                - estoque_atual
+            )
+
+            return max(
+                quantidade,
+                0
+            )
+
+        return 0
+
+    # =====================================================
+    # CUSTO DE ARMAZENAGEM
     # =====================================================
 
     def custo_armazenagem_unitario(self):
@@ -171,35 +369,34 @@ class Insumo(db.Model):
             self.custo_medio_unitario() or 0
         )
 
-        percentual = float(
-            self.percentual_armazenagem or 0
-        )
-
         if custo_unitario <= 0:
-            return 0
-
-        if percentual <= 0:
             return 0
 
         return (
             custo_unitario
-            * percentual
+            * self.PERCENTUAL_ARMAZENAGEM_PADRAO
         ) / 100
 
+    # =====================================================
+    # LOTE ECONÔMICO DE COMPRA — INDICADOR
+    # =====================================================
+    # O LEC não determina a compra sugerida.
+    # É apresentado apenas como indicador gerencial.
+
     def lote_economico(self):
-        demanda = float(
-            self.demanda_mensal_estimada or 0
+        demanda_anual = float(
+            self.demanda_anual_estimada() or 0
         )
 
         custo_pedido = float(
-            self.custo_pedido or 0
+            self.CUSTO_PEDIDO_PADRAO
         )
 
         custo_armazenagem = float(
             self.custo_armazenagem_unitario() or 0
         )
 
-        if demanda <= 0:
+        if demanda_anual <= 0:
             return 0
 
         if custo_pedido <= 0:
@@ -208,85 +405,145 @@ class Insumo(db.Model):
         if custo_armazenagem <= 0:
             return 0
 
-        return math.sqrt(
+        resultado = math.sqrt(
             (
                 2
-                * demanda
+                * demanda_anual
                 * custo_pedido
             )
             / custo_armazenagem
         )
 
-    def estoque_maximo(self):
-        return (
-            self.estoque_minimo()
-            + self.lote_economico()
+        return max(
+            resultado,
+            0
         )
 
     # =====================================================
-    # INDICADORES DE ESTOQUE
+    # GIRO DE ESTOQUE
     # =====================================================
 
     def giro_estoque(self):
+        estoque_minimo = float(
+            self.estoque_minimo() or 0
+        )
+
+        estoque_maximo = float(
+            self.estoque_maximo() or 0
+        )
+
         estoque_medio = (
-            self.estoque_minimo()
-            + self.estoque_maximo()
+            estoque_minimo
+            + estoque_maximo
         ) / 2
 
         if estoque_medio <= 0:
             return 0
 
-        return (
-            self.saidas()
-            / estoque_medio
+        consumo_periodo = float(
+            self.consumo_ultimos_30_dias() or 0
         )
 
-    def cobertura_estoque(self):
-        consumo = self.consumo_medio_diario()
-
-        if consumo <= 0:
+        if consumo_periodo <= 0:
             return 0
 
         return (
-            self.estoque_atual()
-            / consumo
+            consumo_periodo
+            / estoque_medio
         )
 
     # =====================================================
-    # STATUS E AÇÃO SUGERIDA
+    # COBERTURA DE ESTOQUE
     # =====================================================
 
-    def acao_sugerida(self):
-        estoque = self.estoque_atual()
+    def cobertura_estoque(self):
+        consumo_diario = float(
+            self.consumo_medio_diario() or 0
+        )
 
-        if estoque <= 0:
-            return "Comprar agora"
+        estoque_atual = float(
+            self.estoque_atual() or 0
+        )
 
-        if estoque <= self.estoque_minimo():
-            return "Comprar agora"
+        if consumo_diario <= 0:
+            return 0
 
-        if estoque <= self.ponto_pedido():
-            return "Planejar compra"
+        return (
+            estoque_atual
+            / consumo_diario
+        )
 
-        return "Manter estoque"
+    # Mantido para compatibilidade com rotas anteriores.
+    def cobertura_dias(self):
+        return self.cobertura_estoque()
+
+    # =====================================================
+    # STATUS DO ESTOQUE
+    # =====================================================
 
     def status_estoque(self):
-        estoque = self.estoque_atual()
+        estoque_atual = float(
+            self.estoque_atual() or 0
+        )
 
-        if estoque <= 0:
+        ponto_pedido = float(
+            self.ponto_pedido() or 0
+        )
+
+        cobertura = float(
+            self.cobertura_estoque() or 0
+        )
+
+        if estoque_atual <= 0:
             return "Sem estoque"
 
-        if estoque <= self.estoque_minimo():
-            return "Abaixo do mínimo"
-
-        if estoque <= self.ponto_pedido():
+        if (
+            ponto_pedido > 0
+            and estoque_atual <= ponto_pedido
+        ):
             return "Ponto de pedido"
 
-        if self.cobertura_estoque() <= 2:
+        if (
+            cobertura > 0
+            and cobertura <= 2
+        ):
             return "Cobertura baixa"
 
         return "Normal"
-    
+
+    # =====================================================
+    # AÇÃO SUGERIDA
+    # =====================================================
+
+    def acao_sugerida(self):
+        estoque_atual = float(
+            self.estoque_atual() or 0
+        )
+
+        ponto_pedido = float(
+            self.ponto_pedido() or 0
+        )
+
+        cobertura = float(
+            self.cobertura_estoque() or 0
+        )
+
+        if estoque_atual <= 0:
+            return "Comprar agora"
+
+        if (
+            ponto_pedido > 0
+            and estoque_atual <= ponto_pedido
+        ):
+            return "Comprar agora"
+
+        if (
+            cobertura > 0
+            and cobertura <= 2
+        ):
+            return "Planejar compra"
+
+        return "Manter estoque"
 # =========================================================
 # MOVIMENTAÇÃO DE ESTOQUE
 # =========================================================
