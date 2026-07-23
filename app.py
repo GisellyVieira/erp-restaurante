@@ -1506,15 +1506,20 @@ def vendas():
     # =====================================================
 
     if request.method == "POST":
-        produto_id = request.form.get(
-            "produto_id"
-        )
+        produto_id = request.form.get("produto_id")
 
-        quantidade_vendida = int(
-            converter_float(
-                request.form.get("quantidade")
+        try:
+            quantidade_vendida = int(
+                converter_float(
+                    request.form.get("quantidade")
+                )
             )
-        )
+        except (TypeError, ValueError):
+            flash(
+                "Informe uma quantidade válida.",
+                "erro"
+            )
+            return redirect(url_for("vendas"))
 
         data_texto = request.form.get(
             "data_venda",
@@ -1566,16 +1571,6 @@ def vendas():
             )
             return redirect(url_for("vendas"))
 
-        # Venda anterior ao dia de hoje:
-        # registra os valores, mas não altera o estoque.
-        venda_retroativa = (
-            data_venda.date() < hoje
-        )
-
-        movimentar_estoque = (
-            not venda_retroativa
-        )
-
         produto = Produto.query.get_or_404(
             int(produto_id)
         )
@@ -1608,15 +1603,11 @@ def vendas():
             consumos = []
 
             # =================================================
-            # VENDA ATUAL DE PRODUTO PRODUZIDO
+            # PRODUTO PRODUZIDO
+            # CALCULAR CONSUMO E VERIFICAR ESTOQUE
             # =================================================
-            # Só calcula e verifica o estoque quando a venda
-            # for registrada com a data de hoje.
 
-            if (
-                movimentar_estoque
-                and produto.tipo_produto == "Produzido"
-            ):
+            if produto.tipo_produto == "Produzido":
                 consumos = calcular_consumo_insumos(
                     produto,
                     multiplicador=quantidade_vendida,
@@ -1650,10 +1641,7 @@ def vendas():
                         insumo.estoque_atual() or 0
                     )
 
-                    if (
-                        estoque_disponivel
-                        < quantidade_necessaria
-                    ):
+                    if estoque_disponivel < quantidade_necessaria:
                         faltas.append(
                             f"{insumo.nome}: necessário "
                             f"{quantidade_necessaria:.3f}, "
@@ -1672,13 +1660,11 @@ def vendas():
                     )
 
             # =================================================
-            # VENDA ATUAL DE PRODUTO DE REVENDA
+            # PRODUTO DE REVENDA
+            # VERIFICAR ESTOQUE
             # =================================================
 
-            if (
-                movimentar_estoque
-                and produto.tipo_produto == "Revenda"
-            ):
+            elif produto.tipo_produto == "Revenda":
                 estoque_revenda = float(
                     produto.estoque_produto or 0
                 )
@@ -1705,19 +1691,19 @@ def vendas():
                 produto.custo_materia_prima() or 0
             )
 
-            receita_total = (
+            receita_total_venda = (
                 preco_unitario
                 * quantidade_vendida
             )
 
-            cmv_total = (
+            cmv_total_venda = (
                 custo_unitario
                 * quantidade_vendida
             )
 
-            margem_total = (
-                receita_total
-                - cmv_total
+            margem_total_venda = (
+                receita_total_venda
+                - cmv_total_venda
             )
 
             # =================================================
@@ -1728,31 +1714,30 @@ def vendas():
                 data=data_venda,
                 produto_id=produto.id,
                 quantidade=quantidade_vendida,
-                receita_total=receita_total,
-                cmv_total=cmv_total,
-                margem_total=margem_total,
-                movimentou_estoque=movimentar_estoque,
+                receita_total=receita_total_venda,
+                cmv_total=cmv_total_venda,
+                margem_total=margem_total_venda,
+                movimentou_estoque=True,
             )
 
             db.session.add(venda)
             db.session.flush()
 
             # =================================================
-            # BAIXA DE INSUMOS — APENAS VENDA DO DIA
+            # BAIXA DOS INSUMOS DO PRODUTO PRODUZIDO
             # =================================================
 
-            if (
-                movimentar_estoque
-                and produto.tipo_produto == "Produzido"
-            ):
+            if produto.tipo_produto == "Produzido":
                 for insumo, quantidade_saida in consumos:
                     quantidade_saida = float(
                         quantidade_saida or 0
                     )
 
+                    if quantidade_saida <= 0:
+                        continue
+
                     custo_unitario_insumo = float(
-                        insumo.custo_medio_unitario()
-                        or 0
+                        insumo.custo_medio_unitario() or 0
                     )
 
                     custo_saida = (
@@ -1770,19 +1755,17 @@ def vendas():
                             f"{quantidade_vendida} un. "
                             f"- {produto.nome}"
                         ),
+                        data=data_venda,
                         venda_id=venda.id,
                     )
 
                     db.session.add(saida)
 
             # =================================================
-            # BAIXA DA REVENDA — APENAS VENDA DO DIA
+            # BAIXA DO PRODUTO DE REVENDA
             # =================================================
 
-            elif (
-                movimentar_estoque
-                and produto.tipo_produto == "Revenda"
-            ):
+            elif produto.tipo_produto == "Revenda":
                 produto.estoque_produto = (
                     float(
                         produto.estoque_produto or 0
@@ -1792,18 +1775,10 @@ def vendas():
 
             db.session.commit()
 
-            if venda_retroativa:
-                flash(
-                    "Venda retroativa registrada com sucesso. "
-                    "O estoque atual não foi alterado.",
-                    "sucesso"
-                )
-
-            else:
-                flash(
-                    "Venda registrada e estoque atualizado!",
-                    "sucesso"
-                )
+            flash(
+                "Venda registrada e estoque atualizado!",
+                "sucesso"
+            )
 
         except ValueError as erro:
             db.session.rollback()
@@ -1814,21 +1789,21 @@ def vendas():
             )
 
         except Exception as erro:
-         db.session.rollback()
+            db.session.rollback()
 
-    print(
-        f"Erro ao adicionar componente à ficha técnica: {repr(erro)}",
-        flush=True
-    )
+            print(
+                f"Erro ao registrar venda: {repr(erro)}",
+                flush=True
+            )
 
-    traceback.print_exc()
+            traceback.print_exc()
 
-    flash(
-        f"Não foi possível adicionar o componente: {erro}",
-        "erro"
-    )
+            flash(
+                f"Não foi possível registrar a venda: {erro}",
+                "erro"
+            )
 
-    return redirect(url_for("vendas"))
+        return redirect(url_for("vendas"))
 
     # =====================================================
     # ABERTURA DA PÁGINA DE VENDAS
@@ -1843,12 +1818,8 @@ def vendas():
 
     vendas_lista = Venda.query.order_by(
         Venda.data.desc(),
-        Venda.id.desc(),
+        Venda.id.desc()
     ).all()
-
-    # =====================================================
-    # INDICADORES MOSTRADOS NO TOPO DA PÁGINA
-    # =====================================================
 
     receita_total = sum(
         float(venda.receita_total or 0)
@@ -1870,12 +1841,6 @@ def vendas():
         for venda in vendas_lista
     )
 
-    vendas_retroativas = sum(
-        1
-        for venda in vendas_lista
-        if not venda.movimentou_estoque
-    )
-
     return render_template(
         "vendas.html",
         produtos=produtos_lista,
@@ -1884,87 +1849,9 @@ def vendas():
         cmv_total=cmv_total,
         margem_total=margem_total,
         quantidade_total=quantidade_total,
-        vendas_retroativas=vendas_retroativas,
+        vendas_retroativas=0,
         data_hoje=hoje.strftime("%Y-%m-%d"),
     )
-
-
-@app.route(
-    "/excluir_venda/<int:id>",
-    methods=["POST"],
-)
-def excluir_venda(id):
-    if not usuario_logado():
-        return redirect(url_for("login"))
-
-    venda = Venda.query.get_or_404(id)
-    produto = venda.produto
-
-    # Guardamos essa informação antes de excluir.
-    movimentou_estoque = bool(
-        venda.movimentou_estoque
-    )
-
-    try:
-        # Venda do dia:
-        # exclui as movimentações e restaura o estoque.
-        if movimentou_estoque:
-            movimentacoes = (
-                MovimentacaoEstoque.query.filter_by(
-                    venda_id=venda.id
-                ).all()
-            )
-
-            for movimentacao in movimentacoes:
-                db.session.delete(
-                    movimentacao
-                )
-
-            # Produto de revenda tem o saldo armazenado
-            # diretamente na tabela Produto.
-            if (
-                produto
-                and produto.tipo_produto == "Revenda"
-            ):
-                produto.estoque_produto = (
-                    float(
-                        produto.estoque_produto or 0
-                    )
-                    + int(venda.quantidade or 0)
-                )
-
-        # Venda retroativa:
-        # apenas exclui o registro, sem alterar estoque.
-
-        db.session.delete(venda)
-        db.session.commit()
-
-        if movimentou_estoque:
-            flash(
-                "Venda excluída e estoque restaurado!",
-                "sucesso"
-            )
-
-        else:
-            flash(
-                "Lançamento retroativo excluído. "
-                "O estoque não foi alterado.",
-                "sucesso"
-            )
-
-    except Exception as erro:
-        db.session.rollback()
-
-        print(
-            f"Erro ao excluir venda: {erro}"
-        )
-
-        flash(
-            "Não foi possível excluir a venda.",
-            "erro"
-        )
-
-    return redirect(url_for("vendas"))
 
 @app.route("/financeiro", methods=["GET", "POST"])
 def financeiro():
