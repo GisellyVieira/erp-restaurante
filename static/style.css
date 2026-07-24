@@ -2765,7 +2765,7 @@ body.modal-venda-aberto {
 .identificacao-insumo strong,
 .valor-estoque-insumo strong,
 .valor-custo-insumo strong {
-    color: #f0f0f0;
+    color: #444;
 }
 
 .identificacao-insumo small,
