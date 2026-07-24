@@ -506,6 +506,16 @@
                                     ✏️ Editar
                                 </button>
 
+                                <button
+                                    type="button"
+                                    class="btn-produto-secundario"
+                                    id="btnRegistrarCompra"
+                                    onclick="abrirCompraProduto()"
+                                    style="display: none;"
+                                >
+                                    📦 Registrar compra
+                                </button>
+
                                 <form
                                     method="POST"
                                     id="formStatusProduto"
@@ -782,7 +792,6 @@
     </main>
 
 </div>
-
 <!-- =====================================================
      MODAL NOVO PRODUTO
      ===================================================== -->
@@ -1158,7 +1167,6 @@
     </div>
 
 </div>
-
 <!-- =====================================================
      MODAL EDITAR PRODUTO
      ===================================================== -->
@@ -1176,13 +1184,14 @@
             <div>
 
                 <span class="produtos-label">
-                    Edição
+                    Atualização
                 </span>
 
                 <h2>Editar produto</h2>
 
                 <p>
-                    Atualize as informações do item selecionado.
+                    Atualize as informações comerciais e operacionais
+                    do produto selecionado.
                 </p>
 
             </div>
@@ -1232,6 +1241,7 @@
                             type="text"
                             name="nome"
                             id="edit_nome"
+                            placeholder="Ex.: Espeto completo"
                             required
                         >
 
@@ -1335,7 +1345,8 @@
                         <h3>Informações comerciais</h3>
 
                         <p>
-                            Preço de venda e dados de compra.
+                            Preço de venda e dados do produto de
+                            revenda.
                         </p>
                     </div>
 
@@ -1353,6 +1364,7 @@
                         </label>
 
                         <div class="produto-campo-prefixo">
+
                             <span>R$</span>
 
                             <input
@@ -1361,7 +1373,9 @@
                                 min="0"
                                 name="preco_venda"
                                 id="edit_preco"
+                                placeholder="0,00"
                             >
+
                         </div>
 
                     </div>
@@ -1372,10 +1386,11 @@
                     >
 
                         <label for="edit_custo">
-                            Custo de compra
+                            Custo médio atual
                         </label>
 
                         <div class="produto-campo-prefixo">
+
                             <span>R$</span>
 
                             <input
@@ -1384,8 +1399,15 @@
                                 min="0"
                                 name="custo_compra"
                                 id="edit_custo"
+                                placeholder="0,00"
                             >
+
                         </div>
+
+                        <small>
+                            Para produtos de revenda, este valor também
+                            é atualizado automaticamente pelas compras.
+                        </small>
 
                     </div>
 
@@ -1404,7 +1426,13 @@
                             min="0"
                             name="estoque_produto"
                             id="edit_estoque"
+                            placeholder="0"
                         >
+
+                        <small>
+                            Use o registro de compra para entradas
+                            regulares no estoque.
+                        </small>
 
                     </div>
 
@@ -1445,6 +1473,7 @@
                             min="0.001"
                             name="rendimento_quantidade"
                             id="edit_rendimento_quantidade"
+                            placeholder="Ex.: 2"
                         >
 
                     </div>
@@ -1482,6 +1511,17 @@
 
                     </div>
 
+                    <div class="produto-form-aviso">
+
+                        <span>ℹ️</span>
+
+                        <p>
+                            O rendimento deve representar a quantidade
+                            total gerada pela ficha técnica completa.
+                        </p>
+
+                    </div>
+
                 </div>
 
             </section>
@@ -1510,15 +1550,257 @@
     </div>
 
 </div>
+<!-- =====================================================
+     MODAL REGISTRAR COMPRA
+     ===================================================== -->
 
+<div
+    id="modalCompraProduto"
+    class="produto-modal"
+    aria-hidden="true"
+>
+
+    <div class="produto-modal-conteudo">
+
+        <div class="produto-modal-cabecalho">
+
+            <div>
+
+                <span class="produtos-label">
+                    Entrada de estoque
+                </span>
+
+                <h2>Registrar compra</h2>
+
+                <p>
+                    Registre a entrada e atualize o custo médio
+                    do produto de revenda.
+                </p>
+
+            </div>
+
+            <button
+                type="button"
+                class="produto-modal-fechar"
+                onclick="fecharCompraProduto()"
+                aria-label="Fechar"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <form
+            method="POST"
+            id="formCompraProduto"
+            class="produto-form-profissional"
+        >
+
+            <section class="produto-form-secao">
+
+                <div class="produto-form-secao-titulo">
+
+                    <span>01</span>
+
+                    <div>
+                        <h3>Produto selecionado</h3>
+
+                        <p>
+                            Confira o estoque e o custo médio atual.
+                        </p>
+                    </div>
+
+                </div>
+
+                <div class="produto-form-grid">
+
+                    <div class="produto-campo">
+
+                        <label>
+                            Produto
+                        </label>
+
+                        <strong id="compraNomeProduto">
+                            Produto
+                        </strong>
+
+                    </div>
+
+                    <div class="produto-campo">
+
+                        <label>
+                            Estoque atual
+                        </label>
+
+                        <strong id="compraEstoqueAtual">
+                            0
+                        </strong>
+
+                    </div>
+
+                    <div class="produto-campo">
+
+                        <label>
+                            Custo médio atual
+                        </label>
+
+                        <strong id="compraCustoAtual">
+                            R$ 0,00
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="produto-form-secao">
+
+                <div class="produto-form-secao-titulo">
+
+                    <span>02</span>
+
+                    <div>
+                        <h3>Dados da compra</h3>
+
+                        <p>
+                            Informe a quantidade adquirida e o valor
+                            total pago.
+                        </p>
+                    </div>
+
+                </div>
+
+                <div class="produto-form-grid">
+
+                    <div class="produto-campo">
+
+                        <label for="compra_data">
+                            Data da compra
+                        </label>
+
+                        <input
+                            type="date"
+                            id="compra_data"
+                            name="data"
+                            required
+                        >
+
+                    </div>
+
+                    <div class="produto-campo">
+
+                        <label for="compra_quantidade">
+                            Quantidade comprada
+                        </label>
+
+                        <input
+                            type="number"
+                            id="compra_quantidade"
+                            name="quantidade"
+                            min="0.01"
+                            step="0.01"
+                            placeholder="Ex.: 24"
+                            required
+                        >
+
+                    </div>
+
+                    <div class="produto-campo">
+
+                        <label for="compra_valor_total">
+                            Valor total da compra
+                        </label>
+
+                        <div class="produto-campo-prefixo">
+
+                            <span>R$</span>
+
+                            <input
+                                type="number"
+                                id="compra_valor_total"
+                                name="valor_total"
+                                min="0.01"
+                                step="0.01"
+                                placeholder="0,00"
+                                required
+                            >
+
+                        </div>
+
+                    </div>
+
+                    <div class="produto-campo">
+
+                        <label>
+                            Custo unitário da compra
+                        </label>
+
+                        <strong id="compraCustoUnitario">
+                            R$ 0,00
+                        </strong>
+
+                        <small>
+                            Calculado automaticamente com base na
+                            quantidade e no valor total.
+                        </small>
+
+                    </div>
+
+                    <div class="produto-campo campo-largo">
+
+                        <label for="compra_observacao">
+                            Observação
+                        </label>
+
+                        <textarea
+                            id="compra_observacao"
+                            name="observacao"
+                            rows="3"
+                            maxlength="250"
+                            placeholder="Ex.: fornecedor, número da nota fiscal ou outra informação."
+                        ></textarea>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <div class="produto-modal-acoes">
+
+                <button
+                    type="button"
+                    class="btn-produto-cancelar"
+                    onclick="fecharCompraProduto()"
+                >
+                    Cancelar
+                </button>
+
+                <button
+                    type="submit"
+                    class="btn-produto-salvar"
+                >
+                    Registrar compra
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
 <script>
     let filtroProdutoAtual = "todos";
     let produtoSelecionado = null;
 
-    function formatarMoeda(valor) {
-        const numero = Number(valor || 0);
+    function elemento(id) {
+        return document.getElementById(id);
+    }
 
-        return numero.toLocaleString(
+    function formatarMoeda(valor) {
+        return Number(valor || 0).toLocaleString(
             "pt-BR",
             {
                 style: "currency",
@@ -1528,9 +1810,7 @@
     }
 
     function formatarNumero(valor, casas = 2) {
-        const numero = Number(valor || 0);
-
-        return numero.toLocaleString(
+        return Number(valor || 0).toLocaleString(
             "pt-BR",
             {
                 minimumFractionDigits: 0,
@@ -1539,10 +1819,12 @@
         );
     }
 
-    function abrirNovoProduto() {
-        const modal = document.getElementById(
-            "modalNovoProduto"
-        );
+    function abrirModal(id) {
+        const modal = elemento(id);
+
+        if (!modal) {
+            return;
+        }
 
         modal.classList.add("aberto");
         modal.setAttribute("aria-hidden", "false");
@@ -1550,517 +1832,892 @@
         document.body.classList.add(
             "modal-produto-aberto"
         );
-
-        atualizarCamposNovoProduto();
-
-        setTimeout(function() {
-            document.getElementById(
-                "novo_nome"
-            ).focus();
-        }, 100);
     }
 
-    function fecharNovoProduto() {
-        const modal = document.getElementById(
-            "modalNovoProduto"
-        );
+    function fecharModal(id) {
+        const modal = elemento(id);
+
+        if (!modal) {
+            return;
+        }
 
         modal.classList.remove("aberto");
         modal.setAttribute("aria-hidden", "true");
 
-        document.body.classList.remove(
-            "modal-produto-aberto"
-        );
+        const existeModalAberto =
+            document.querySelector(
+                ".produto-modal.aberto"
+            );
+
+        if (!existeModalAberto) {
+            document.body.classList.remove(
+                "modal-produto-aberto"
+            );
+        }
     }
 
-    function fecharEditarProduto() {
-        const modal = document.getElementById(
-            "modalEditarProduto"
+    function abrirNovoProduto() {
+        const formulario = elemento(
+            "formNovoProduto"
         );
 
-        modal.classList.remove("aberto");
-        modal.setAttribute("aria-hidden", "true");
+        if (formulario) {
+            formulario.reset();
+        }
 
-        document.body.classList.remove(
-            "modal-produto-aberto"
-        );
-    }
-
-    function atualizarCamposNovoProduto() {
-        const tipo = document.getElementById(
+        const campoTipo = elemento(
             "novo_tipo_produto"
-        ).value;
+        );
 
-        const finalidade = document.getElementById(
+        const campoFinalidade = elemento(
             "nova_finalidade"
-        ).value;
-
-        const blocoCusto = document.getElementById(
-            "novo_bloco_custo_compra"
         );
 
-        const blocoEstoque = document.getElementById(
-            "novo_bloco_estoque"
-        );
-
-        const blocoRendimento = document.getElementById(
-            "novo_bloco_rendimento"
-        );
-
-        const campoRendimento = document.getElementById(
-            "novo_rendimento_quantidade"
-        );
-
-        const unidadeRendimento = document.getElementById(
-            "novo_rendimento_unidade"
-        );
-
-        const precoVenda = document.getElementById(
+        const campoPreco = elemento(
             "novo_preco_venda"
         );
 
-        const produtoRevenda = tipo === "Revenda";
+        const campoCusto = elemento(
+            "novo_custo_compra"
+        );
 
-        blocoCusto.style.display = produtoRevenda
-            ? "flex"
-            : "none";
+        const campoEstoque = elemento(
+            "novo_estoque_produto"
+        );
 
-        blocoEstoque.style.display = produtoRevenda
-            ? "flex"
-            : "none";
+        const campoRendimento = elemento(
+            "novo_rendimento_quantidade"
+        );
 
-        blocoRendimento.style.display = produtoRevenda
-            ? "none"
-            : "block";
+        const campoUnidade = elemento(
+            "novo_rendimento_unidade"
+        );
 
-        campoRendimento.required = !produtoRevenda;
-
-        if (produtoRevenda) {
-            campoRendimento.value = "1";
-            unidadeRendimento.value = "un";
+        if (campoTipo) {
+            campoTipo.value = "Produzido";
         }
 
-        if (finalidade === "Preparo Interno") {
-            precoVenda.required = false;
-            precoVenda.value = "0";
-        } else {
-            precoVenda.required = true;
+        if (campoFinalidade) {
+            campoFinalidade.value = "Venda";
+        }
+
+        if (campoPreco) {
+            campoPreco.value = "0";
+        }
+
+        if (campoCusto) {
+            campoCusto.value = "0";
+        }
+
+        if (campoEstoque) {
+            campoEstoque.value = "0";
+        }
+
+        if (campoRendimento) {
+            campoRendimento.value = "1";
+        }
+
+        if (campoUnidade) {
+            campoUnidade.value = "un";
+        }
+
+        atualizarCamposNovoProduto();
+        abrirModal("modalNovoProduto");
+
+        setTimeout(
+            function() {
+                const campoNome = elemento(
+                    "novo_nome"
+                );
+
+                if (campoNome) {
+                    campoNome.focus();
+                }
+            },
+            100
+        );
+    }
+
+    function fecharNovoProduto() {
+        fecharModal("modalNovoProduto");
+    }
+
+    function fecharEditarProduto() {
+        fecharModal("modalEditarProduto");
+    }
+
+    function fecharCompraProduto() {
+        fecharModal("modalCompraProduto");
+    }
+
+    function atualizarCamposNovoProduto() {
+        const campoTipo = elemento(
+            "novo_tipo_produto"
+        );
+
+        const campoFinalidade = elemento(
+            "nova_finalidade"
+        );
+
+        if (!campoTipo || !campoFinalidade) {
+            return;
+        }
+
+        const revenda =
+            campoTipo.value === "Revenda";
+
+        const preparoInterno =
+            campoFinalidade.value ===
+            "Preparo Interno";
+
+        const blocoCusto = elemento(
+            "novo_bloco_custo_compra"
+        );
+
+        const blocoEstoque = elemento(
+            "novo_bloco_estoque"
+        );
+
+        const blocoRendimento = elemento(
+            "novo_bloco_rendimento"
+        );
+
+        const campoRendimento = elemento(
+            "novo_rendimento_quantidade"
+        );
+
+        const campoUnidade = elemento(
+            "novo_rendimento_unidade"
+        );
+
+        const campoPreco = elemento(
+            "novo_preco_venda"
+        );
+
+        if (blocoCusto) {
+            blocoCusto.style.display =
+                revenda ? "flex" : "none";
+        }
+
+        if (blocoEstoque) {
+            blocoEstoque.style.display =
+                revenda ? "flex" : "none";
+        }
+
+        if (blocoRendimento) {
+            blocoRendimento.style.display =
+                revenda ? "none" : "block";
+        }
+
+        if (campoRendimento) {
+            campoRendimento.required = !revenda;
+
+            if (revenda) {
+                campoRendimento.value = "1";
+            }
+        }
+
+        if (campoUnidade && revenda) {
+            campoUnidade.value = "un";
+        }
+
+        if (campoPreco) {
+            campoPreco.required =
+                !preparoInterno;
+
+            if (preparoInterno) {
+                campoPreco.value = "0";
+            }
         }
     }
 
     function atualizarCamposEdicao() {
-        const tipo = document.getElementById(
+        const campoTipo = elemento(
             "edit_tipo"
-        ).value;
+        );
 
-        const finalidade = document.getElementById(
+        const campoFinalidade = elemento(
             "edit_finalidade"
-        ).value;
+        );
 
-        const blocoCusto = document.getElementById(
+        if (!campoTipo || !campoFinalidade) {
+            return;
+        }
+
+        const revenda =
+            campoTipo.value === "Revenda";
+
+        const preparoInterno =
+            campoFinalidade.value ===
+            "Preparo Interno";
+
+        const blocoCusto = elemento(
             "edit_bloco_custo_compra"
         );
 
-        const blocoEstoque = document.getElementById(
+        const blocoEstoque = elemento(
             "edit_bloco_estoque"
         );
 
-        const blocoRendimento = document.getElementById(
+        const blocoRendimento = elemento(
             "edit_bloco_rendimento"
         );
 
-        const campoRendimento = document.getElementById(
+        const campoRendimento = elemento(
             "edit_rendimento_quantidade"
         );
 
-        const unidadeRendimento = document.getElementById(
+        const campoUnidade = elemento(
             "edit_rendimento_unidade"
         );
 
-        const precoVenda = document.getElementById(
+        const campoPreco = elemento(
             "edit_preco"
         );
 
-        const produtoRevenda = tipo === "Revenda";
-
-        blocoCusto.style.display = produtoRevenda
-            ? "flex"
-            : "none";
-
-        blocoEstoque.style.display = produtoRevenda
-            ? "flex"
-            : "none";
-
-        blocoRendimento.style.display = produtoRevenda
-            ? "none"
-            : "block";
-
-        campoRendimento.required = !produtoRevenda;
-
-        if (produtoRevenda) {
-            unidadeRendimento.value = "un";
+        if (blocoCusto) {
+            blocoCusto.style.display =
+                revenda ? "flex" : "none";
         }
 
-        precoVenda.required = (
-            finalidade !== "Preparo Interno"
-        );
-    }
+        if (blocoEstoque) {
+            blocoEstoque.style.display =
+                revenda ? "flex" : "none";
+        }
 
-    function selecionarFiltro(botao, filtro) {
+        if (blocoRendimento) {
+            blocoRendimento.style.display =
+                revenda ? "none" : "block";
+        }
+
+        if (campoRendimento) {
+            campoRendimento.required = !revenda;
+
+            if (revenda) {
+                campoRendimento.value = "1";
+            }
+        }
+
+        if (campoUnidade && revenda) {
+            campoUnidade.value = "un";
+        }
+
+        if (campoPreco) {
+            campoPreco.required =
+                !preparoInterno;
+
+            if (preparoInterno) {
+                campoPreco.value = "0";
+            }
+        }
+    }
+        function selecionarFiltro(botao, filtro) {
         filtroProdutoAtual = filtro;
 
         document
             .querySelectorAll(".produto-filtro")
-            .forEach(function(item) {
-                item.classList.remove("ativo");
-            });
+            .forEach(
+                function(item) {
+                    item.classList.remove("ativo");
+                }
+            );
 
-        botao.classList.add("ativo");
+        if (botao) {
+            botao.classList.add("ativo");
+        }
 
         aplicarFiltrosProdutos();
     }
 
     function aplicarFiltrosProdutos() {
-        const busca = (
-            document.getElementById(
-                "buscaProduto"
-            ).value || ""
-        ).toLowerCase().trim();
-
-        const produtos = document.querySelectorAll(
-            ".produto-lista-item"
+        const campoBusca = elemento(
+            "buscaProduto"
         );
 
-        let primeiroVisivel = null;
+        const busca = (
+            campoBusca
+                ? campoBusca.value
+                : ""
+        )
+            .toLowerCase()
+            .trim();
 
-        produtos.forEach(function(item) {
-            const nome = (
-                item.dataset.nome || ""
-            ).toLowerCase();
+        let primeiroProdutoVisivel = null;
 
-            const categoria = (
-                item.dataset.categoria || ""
-            ).toLowerCase();
+        document
+            .querySelectorAll(
+                ".produto-lista-item"
+            )
+            .forEach(
+                function(item) {
+                    const nome = (
+                        item.dataset.nome || ""
+                    ).toLowerCase();
 
-            const finalidade = (
-                item.dataset.finalidade || ""
+                    const categoria = (
+                        item.dataset.categoria || ""
+                    ).toLowerCase();
+
+                    const finalidade =
+                        item.dataset.finalidade || "";
+
+                    const tipo =
+                        item.dataset.tipo || "";
+
+                    const ativo =
+                        item.dataset.ativo === "1";
+
+                    const correspondeBusca =
+                        nome.includes(busca) ||
+                        categoria.includes(busca);
+
+                    let correspondeFiltro = true;
+
+                    if (
+                        filtroProdutoAtual === "venda"
+                    ) {
+                        correspondeFiltro =
+                            finalidade === "Venda";
+                    } else if (
+                        filtroProdutoAtual ===
+                        "preparo"
+                    ) {
+                        correspondeFiltro =
+                            finalidade ===
+                            "Preparo Interno";
+                    } else if (
+                        filtroProdutoAtual ===
+                        "revenda"
+                    ) {
+                        correspondeFiltro =
+                            tipo === "Revenda";
+                    } else if (
+                        filtroProdutoAtual ===
+                        "inativo"
+                    ) {
+                        correspondeFiltro = !ativo;
+                    }
+
+                    const deveExibir =
+                        correspondeBusca &&
+                        correspondeFiltro;
+
+                    item.style.display =
+                        deveExibir
+                            ? "flex"
+                            : "none";
+
+                    if (
+                        deveExibir &&
+                        !primeiroProdutoVisivel
+                    ) {
+                        primeiroProdutoVisivel =
+                            item;
+                    }
+                }
             );
-
-            const tipo = (
-                item.dataset.tipo || ""
-            );
-
-            const ativo = (
-                item.dataset.ativo === "1"
-            );
-
-            const correspondeBusca =
-                nome.includes(busca) ||
-                categoria.includes(busca);
-
-            let correspondeFiltro = true;
-
-            if (filtroProdutoAtual === "venda") {
-                correspondeFiltro = (
-                    finalidade === "Venda"
-                );
-            }
-
-            if (filtroProdutoAtual === "preparo") {
-                correspondeFiltro = (
-                    finalidade === "Preparo Interno"
-                );
-            }
-
-            if (filtroProdutoAtual === "revenda") {
-                correspondeFiltro = (
-                    tipo === "Revenda"
-                );
-            }
-
-            if (filtroProdutoAtual === "inativo") {
-                correspondeFiltro = !ativo;
-            }
-
-            const visivel = (
-                correspondeBusca &&
-                correspondeFiltro
-            );
-
-            item.style.display = visivel
-                ? "flex"
-                : "none";
-
-            if (visivel && !primeiroVisivel) {
-                primeiroVisivel = item;
-            }
-        });
 
         if (
             produtoSelecionado &&
-            produtoSelecionado.style.display === "none"
+            produtoSelecionado.style.display ===
+            "none"
         ) {
-            selecionarProduto(primeiroVisivel);
+            produtoSelecionado = null;
+
+            if (primeiroProdutoVisivel) {
+                selecionarProduto(
+                    primeiroProdutoVisivel
+                );
+            }
         }
     }
 
-    function selecionarProduto(elemento) {
-        if (!elemento) {
+    function selecionarProduto(item) {
+        if (!item) {
             return;
         }
 
         document
-            .querySelectorAll(".produto-lista-item")
-            .forEach(function(item) {
-                item.classList.remove("selecionado");
-            });
+            .querySelectorAll(
+                ".produto-lista-item"
+            )
+            .forEach(
+                function(produto) {
+                    produto.classList.remove(
+                        "selecionado"
+                    );
+                }
+            );
 
-        elemento.classList.add("selecionado");
-        produtoSelecionado = elemento;
+        item.classList.add("selecionado");
 
-        atualizarPainelProduto(elemento);
+        produtoSelecionado = item;
+
+        atualizarPainelProduto(item);
     }
 
-    function atualizarPainelProduto(elemento) {
-        const dados = elemento.dataset;
+    function preencherTexto(id, valor) {
+        const campo = elemento(id);
 
-        const finalidade = (
-            dados.finalidade || "Venda"
-        );
+        if (!campo) {
+            return;
+        }
 
-        const tipo = (
-            dados.tipo || "Produzido"
-        );
+        campo.textContent = valor;
+    }
+        function atualizarPainelProduto(item) {
+        if (!item) {
+            return;
+        }
 
-        const ativo = (
-            dados.ativo === "1"
-        );
+        const dados = item.dataset;
 
-        const situacao = (
-            dados.situacao || "Sem custo"
-        );
+        const tipo =
+            dados.tipo || "Produzido";
+
+        const finalidade =
+            dados.finalidade || "Venda";
+
+        const ativo =
+            dados.ativo === "1";
+
+        const situacao =
+            dados.situacao || "Sem custo";
 
         let avatar = "🍽️";
 
-        if (finalidade === "Preparo Interno") {
+        if (
+            finalidade === "Preparo Interno"
+        ) {
             avatar = "🥣";
-        } else if (tipo === "Revenda") {
+        } else if (
+            tipo === "Revenda"
+        ) {
             avatar = "🧃";
         }
 
-        document.getElementById(
-            "detalheAvatar"
-        ).textContent = avatar;
-
-        document.getElementById(
-            "detalheNome"
-        ).textContent = dados.nome || "-";
-
-        document.getElementById(
-            "detalheCategoria"
-        ).textContent = dados.categoria || "Sem categoria";
-
-        document.getElementById(
-            "detalheFinalidade"
-        ).textContent = finalidade;
-
-        document.getElementById(
-            "detalheTipo"
-        ).textContent = tipo;
-
-        const detalheStatus = document.getElementById(
-            "detalheStatus"
+        preencherTexto(
+            "detalheAvatar",
+            avatar
         );
 
-        detalheStatus.textContent = ativo
-            ? "Ativo"
-            : "Inativo";
-
-        detalheStatus.classList.toggle(
-            "inativo",
-            !ativo
+        preencherTexto(
+            "detalheNome",
+            dados.nome || "-"
         );
 
-        document.getElementById(
-            "detalhePreco"
-        ).textContent = formatarMoeda(
-            dados.preco
+        preencherTexto(
+            "detalheCategoria",
+            dados.categoria || "Sem categoria"
         );
 
-        document.getElementById(
-            "detalheCusto"
-        ).textContent = formatarMoeda(
-            dados.custoCalculado
+        preencherTexto(
+            "detalheFinalidade",
+            finalidade
         );
 
-        document.getElementById(
-            "detalheMargem"
-        ).textContent = formatarMoeda(
-            dados.margem
+        preencherTexto(
+            "detalheTipo",
+            tipo
         );
 
-        document.getElementById(
-            "detalheMargemPercentual"
-        ).textContent =
+        preencherTexto(
+            "detalhePreco",
+            formatarMoeda(
+                dados.preco
+            )
+        );
+
+        preencherTexto(
+            "detalheCusto",
+            formatarMoeda(
+                dados.custoCalculado
+            )
+        );
+
+        preencherTexto(
+            "detalheMargem",
+            formatarMoeda(
+                dados.margem
+            )
+        );
+
+        preencherTexto(
+            "detalheMargemPercentual",
             formatarNumero(
                 dados.margemPercentual,
                 1
-            ) + "% do preço";
-
-        document.getElementById(
-            "detalhePrecoSugerido"
-        ).textContent = formatarMoeda(
-            dados.precoSugerido
+            ) + "% do preço"
         );
 
-        document.getElementById(
-            "infoCategoria"
-        ).textContent = dados.categoria || "-";
-
-        document.getElementById(
-            "infoTipo"
-        ).textContent = tipo;
-
-        document.getElementById(
-            "infoFinalidade"
-        ).textContent = finalidade;
-
-        const infoSituacao = document.getElementById(
-            "infoSituacao"
+        preencherTexto(
+            "detalhePrecoSugerido",
+            formatarMoeda(
+                dados.precoSugerido
+            )
         );
 
-        infoSituacao.textContent = situacao;
+        preencherTexto(
+            "infoCategoria",
+            dados.categoria || "-"
+        );
 
-        infoSituacao.className =
-            "produto-situacao " +
-            (
-                situacao === "Adequado"
-                    ? "adequado"
-                    : situacao === "Revisar"
-                        ? "revisar"
-                        : "sem-custo"
-            );
+        preencherTexto(
+            "infoTipo",
+            tipo
+        );
 
-        document.getElementById(
-            "infoRendimento"
-        ).textContent =
+        preencherTexto(
+            "infoFinalidade",
+            finalidade
+        );
+
+        preencherTexto(
+            "infoRendimento",
             formatarNumero(
                 dados.rendimentoQuantidade,
                 3
             ) +
             " " +
             (
-                dados.rendimentoUnidade || "un"
+                dados.rendimentoUnidade ||
+                "un"
+            )
+        );
+
+        preencherTexto(
+            "infoCustoCompra",
+            formatarMoeda(
+                dados.custoCompra
+            )
+        );
+
+        preencherTexto(
+            "infoEstoque",
+            formatarNumero(
+                dados.estoque,
+                2
+            )
+        );
+
+        const campoStatus = elemento(
+            "detalheStatus"
+        );
+
+        if (campoStatus) {
+            campoStatus.textContent =
+                ativo
+                    ? "Ativo"
+                    : "Inativo";
+
+            campoStatus.classList.toggle(
+                "inativo",
+                !ativo
             );
+        }
 
-        document.getElementById(
-            "infoCustoCompra"
-        ).textContent = formatarMoeda(
-            dados.custoCompra
+        const campoSituacao = elemento(
+            "infoSituacao"
         );
 
-        document.getElementById(
-            "infoEstoque"
-        ).textContent = formatarNumero(
-            dados.estoque,
-            2
-        );
+        if (campoSituacao) {
+            campoSituacao.textContent =
+                situacao;
 
-        document.getElementById(
+            let classeSituacao =
+                "sem-custo";
+
+            if (
+                situacao === "Adequado"
+            ) {
+                classeSituacao =
+                    "adequado";
+            } else if (
+                situacao === "Revisar"
+            ) {
+                classeSituacao =
+                    "revisar";
+            }
+
+            campoSituacao.className =
+                "produto-situacao " +
+                classeSituacao;
+        }
+
+        const cardProducao = elemento(
             "cardProducao"
-        ).style.display = (
-            tipo === "Produzido"
-        ) ? "block" : "none";
+        );
 
-        document.getElementById(
+        const cardRevenda = elemento(
             "cardRevenda"
-        ).style.display = (
+        );
+
+        if (cardProducao) {
+            cardProducao.style.display =
+                tipo === "Produzido"
+                    ? "block"
+                    : "none";
+        }
+
+        if (cardRevenda) {
+            cardRevenda.style.display =
+                tipo === "Revenda"
+                    ? "block"
+                    : "none";
+        }
+
+        const botaoCompra = elemento(
+            "btnRegistrarCompra"
+        );
+
+        if (botaoCompra) {
+            botaoCompra.style.display =
+                tipo === "Revenda"
+                    ? "inline-flex"
+                    : "none";
+        }
+
+        preencherTexto(
+            "detalheCustoDescricao",
             tipo === "Revenda"
-        ) ? "block" : "none";
+                ? "Custo médio de compra"
+                : "Calculado pela ficha técnica"
+        );
 
-        document.getElementById(
-            "detalheCustoDescricao"
-        ).textContent = (
-            tipo === "Revenda"
-        )
-            ? "Custo informado na compra"
-            : "Calculado pela ficha técnica";
-
-        const id = dados.id;
-
-        document.getElementById(
+        const formularioStatus = elemento(
             "formStatusProduto"
-        ).action = `/alterar_status_produto/${id}`;
+        );
 
-        document.getElementById(
-            "btnAlterarStatus"
-        ).textContent = ativo
-            ? "Desativar"
-            : "Ativar";
+        if (formularioStatus) {
+            formularioStatus.action =
+                `/alterar_status_produto/${dados.id}`;
+        }
 
-        document.getElementById(
+        preencherTexto(
+            "btnAlterarStatus",
+            ativo
+                ? "Desativar"
+                : "Ativar"
+        );
+
+        const botaoExcluir = elemento(
             "btnExcluirProduto"
-        ).href = `/excluir_produto/${id}`;
-    }
+        );
 
-    function editarProdutoSelecionado() {
+        if (botaoExcluir) {
+            botaoExcluir.href =
+                `/excluir_produto/${dados.id}`;
+        }
+    }
+        function editarProdutoSelecionado() {
         if (!produtoSelecionado) {
             return;
         }
 
-        const dados = produtoSelecionado.dataset;
+        const dados =
+            produtoSelecionado.dataset;
 
-        document.getElementById(
-            "edit_nome"
-        ).value = dados.nome || "";
+        const campos = {
+            edit_nome:
+                dados.nome || "",
 
-        document.getElementById(
-            "edit_categoria"
-        ).value = dados.categoria || "Outros";
+            edit_categoria:
+                dados.categoria || "Outros",
 
-        document.getElementById(
-            "edit_preco"
-        ).value = dados.preco || "0";
+            edit_preco:
+                dados.preco || "0",
 
-        document.getElementById(
-            "edit_tipo"
-        ).value = dados.tipo || "Produzido";
+            edit_tipo:
+                dados.tipo || "Produzido",
 
-        document.getElementById(
-            "edit_finalidade"
-        ).value = dados.finalidade || "Venda";
+            edit_finalidade:
+                dados.finalidade || "Venda",
 
-        document.getElementById(
-            "edit_custo"
-        ).value = dados.custoCompra || "0";
+            edit_custo:
+                dados.custoCompra || "0",
 
-        document.getElementById(
-            "edit_estoque"
-        ).value = dados.estoque || "0";
+            edit_estoque:
+                dados.estoque || "0",
 
-        document.getElementById(
-            "edit_rendimento_quantidade"
-        ).value = dados.rendimentoQuantidade || "1";
+            edit_rendimento_quantidade:
+                dados.rendimentoQuantidade || "1",
 
-        document.getElementById(
-            "edit_rendimento_unidade"
-        ).value = dados.rendimentoUnidade || "un";
+            edit_rendimento_unidade:
+                dados.rendimentoUnidade || "un"
+        };
 
-        document.getElementById(
-            "formEditarProduto"
-        ).action = `/editar_produto/${dados.id}`;
+        Object.entries(campos).forEach(
+            function([id, valor]) {
+                const campo = elemento(id);
 
-        atualizarCamposEdicao();
-
-        const modal = document.getElementById(
-            "modalEditarProduto"
+                if (campo) {
+                    campo.value = valor;
+                }
+            }
         );
 
-        modal.classList.add("aberto");
-        modal.setAttribute("aria-hidden", "false");
+        const formulario = elemento(
+            "formEditarProduto"
+        );
 
-        document.body.classList.add(
-            "modal-produto-aberto"
+        if (formulario) {
+            formulario.action =
+                `/editar_produto/${dados.id}`;
+        }
+
+        atualizarCamposEdicao();
+        abrirModal("modalEditarProduto");
+    }
+
+    function abrirCompraProduto() {
+        if (!produtoSelecionado) {
+            return;
+        }
+
+        const dados =
+            produtoSelecionado.dataset;
+
+        if (
+            dados.tipo !== "Revenda"
+        ) {
+            alert(
+                "Somente produtos de revenda podem receber compras."
+            );
+
+            return;
+        }
+
+        const formulario = elemento(
+            "formCompraProduto"
+        );
+
+        if (!formulario) {
+            return;
+        }
+
+        formulario.action =
+            `/registrar_compra_produto/${dados.id}`;
+
+        preencherTexto(
+            "compraNomeProduto",
+            dados.nome || "Produto"
+        );
+
+        preencherTexto(
+            "compraEstoqueAtual",
+            formatarNumero(
+                dados.estoque,
+                2
+            )
+        );
+
+        preencherTexto(
+            "compraCustoAtual",
+            formatarMoeda(
+                dados.custoCompra
+            )
+        );
+
+        const campoQuantidade = elemento(
+            "compra_quantidade"
+        );
+
+        const campoValorTotal = elemento(
+            "compra_valor_total"
+        );
+
+        const campoObservacao = elemento(
+            "compra_observacao"
+        );
+
+        if (campoQuantidade) {
+            campoQuantidade.value = "";
+        }
+
+        if (campoValorTotal) {
+            campoValorTotal.value = "";
+        }
+
+        if (campoObservacao) {
+            campoObservacao.value = "";
+        }
+
+        definirDataCompraAtual();
+        atualizarCustoUnitarioCompra();
+        abrirModal("modalCompraProduto");
+
+        setTimeout(
+            function() {
+                if (campoQuantidade) {
+                    campoQuantidade.focus();
+                }
+            },
+            100
+        );
+    }
+
+    function definirDataCompraAtual() {
+        const campoData = elemento(
+            "compra_data"
+        );
+
+        if (!campoData) {
+            return;
+        }
+
+        const hoje = new Date();
+
+        const ano =
+            hoje.getFullYear();
+
+        const mes =
+            String(
+                hoje.getMonth() + 1
+            ).padStart(2, "0");
+
+        const dia =
+            String(
+                hoje.getDate()
+            ).padStart(2, "0");
+
+        campoData.value =
+            `${ano}-${mes}-${dia}`;
+    }
+
+    function atualizarCustoUnitarioCompra() {
+        const campoQuantidade = elemento(
+            "compra_quantidade"
+        );
+
+        const campoValorTotal = elemento(
+            "compra_valor_total"
+        );
+
+        const quantidade =
+            Number(
+                campoQuantidade
+                    ? campoQuantidade.value
+                    : 0
+            );
+
+        const valorTotal =
+            Number(
+                campoValorTotal
+                    ? campoValorTotal.value
+                    : 0
+            );
+
+        const custoUnitario =
+            quantidade > 0 &&
+            valorTotal > 0
+                ? valorTotal / quantidade
+                : 0;
+
+        preencherTexto(
+            "compraCustoUnitario",
+            formatarMoeda(
+                custoUnitario
+            )
         );
     }
 
@@ -2069,62 +2726,102 @@
             return false;
         }
 
-        const nome = (
+        const nome =
             produtoSelecionado.dataset.nome ||
-            "este produto"
-        );
+            "este produto";
 
         return confirm(
             `Deseja realmente excluir "${nome}"?`
         );
     }
-
-    document.addEventListener(
+        document.addEventListener(
         "DOMContentLoaded",
         function() {
             atualizarCamposNovoProduto();
 
-            const primeiroProduto = document.querySelector(
-                ".produto-lista-item"
-            );
+            const primeiroProduto =
+                document.querySelector(
+                    ".produto-lista-item"
+                );
 
             if (primeiroProduto) {
-                selecionarProduto(primeiroProduto);
+                selecionarProduto(
+                    primeiroProduto
+                );
             }
+
+            const campoQuantidade = elemento(
+                "compra_quantidade"
+            );
+
+            const campoValorTotal = elemento(
+                "compra_valor_total"
+            );
+
+            if (campoQuantidade) {
+                campoQuantidade.addEventListener(
+                    "input",
+                    atualizarCustoUnitarioCompra
+                );
+            }
+
+            if (campoValorTotal) {
+                campoValorTotal.addEventListener(
+                    "input",
+                    atualizarCustoUnitarioCompra
+                );
+            }
+
+            const modais = [
+                {
+                    id: "modalNovoProduto",
+                    fechar: fecharNovoProduto
+                },
+                {
+                    id: "modalEditarProduto",
+                    fechar: fecharEditarProduto
+                },
+                {
+                    id: "modalCompraProduto",
+                    fechar: fecharCompraProduto
+                }
+            ];
+
+            modais.forEach(
+                function(configuracao) {
+                    const modal = elemento(
+                        configuracao.id
+                    );
+
+                    if (!modal) {
+                        return;
+                    }
+
+                    modal.addEventListener(
+                        "click",
+                        function(evento) {
+                            if (
+                                evento.target === modal
+                            ) {
+                                configuracao.fechar();
+                            }
+                        }
+                    );
+                }
+            );
         }
     );
 
     document.addEventListener(
         "keydown",
-        function(event) {
-            if (event.key === "Escape") {
+        function(evento) {
+            if (evento.key === "Escape") {
                 fecharNovoProduto();
                 fecharEditarProduto();
+                fecharCompraProduto();
             }
         }
     );
-
-    document
-        .getElementById("modalNovoProduto")
-        .addEventListener(
-            "click",
-            function(event) {
-                if (event.target === this) {
-                    fecharNovoProduto();
-                }
-            }
-        );
-
-    document
-        .getElementById("modalEditarProduto")
-        .addEventListener(
-            "click",
-            function(event) {
-                if (event.target === this) {
-                    fecharEditarProduto();
-                }
-            }
-        );
 </script>
 
 </body>

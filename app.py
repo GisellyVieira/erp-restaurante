@@ -15,10 +15,11 @@ from models import (
     db,
     Usuario,
     Insumo,
-    MovimentacaoEstoque,
     Produto,
-    FichaTecnica,
     Venda,
+    MovimentacaoEstoque,
+    MovimentacaoProduto,
+    FichaTecnica,
     Financeiro,
 )
 
@@ -758,337 +759,929 @@ def excluir_insumo(id):
 
     return redirect(url_for("insumos"))
 
-@app.route("/produtos", methods=["GET", "POST"])
+# =========================================================
+# FUNÇÃO AUXILIAR PARA VALORES DO FORMULÁRIO
+# =========================================================
+
+def converter_numero_formulario(
+    valor,
+    padrao=0
+):
+    """
+    Converte valores recebidos do formulário para float.
+
+    Aceita:
+    10
+    10.50
+    10,50
+    """
+
+    if valor is None:
+        return float(padrao)
+
+    texto = str(valor).strip()
+
+    if not texto:
+        return float(padrao)
+
+    texto = texto.replace(" ", "")
+
+    if "," in texto and "." in texto:
+        texto = texto.replace(".", "")
+        texto = texto.replace(",", ".")
+
+    elif "," in texto:
+        texto = texto.replace(",", ".")
+
+    try:
+        return float(texto)
+
+    except (TypeError, ValueError):
+        return float(padrao)
+
+
+# =========================================================
+# PRODUTOS — LISTAGEM E CADASTRO
+# =========================================================
+
+@app.route(
+    "/produtos",
+    methods=["GET", "POST"]
+)
 def produtos():
-    if not usuario_logado():
-        return redirect(url_for("login"))
+    if "usuario_id" not in session:
+        return redirect(
+            url_for("login")
+        )
 
     if request.method == "POST":
-        tipo_produto = request.form.get(
-            "tipo_produto",
-            "Produzido",
-        ).strip()
-
-        finalidade = request.form.get(
-            "finalidade",
-            "Venda",
-        ).strip()
-
-        nome = request.form.get(
-            "nome",
-            "",
-        ).strip()
-
-        categoria = request.form.get(
-            "categoria",
-            "",
-        ).strip()
-
-        preco_venda = converter_float(
-            request.form.get("preco_venda")
+        nome = (
+            request.form.get("nome", "")
+            .strip()
         )
 
-        custo_compra = converter_float(
-            request.form.get("custo_compra")
-        )
-
-        estoque_produto = converter_float(
-            request.form.get("estoque_produto")
-        )
-
-        rendimento_quantidade = converter_float(
-            request.form.get("rendimento_quantidade"),
-            1.0,
-        )
-
-        rendimento_unidade = request.form.get(
-            "rendimento_unidade",
-            "un",
-        ).strip()
-
-        if not nome or not categoria:
-            flash(
-                "Preencha o nome e a categoria do produto.",
-                "erro",
+        categoria = (
+            request.form.get(
+                "categoria",
+                "Outros"
             )
-            return redirect(url_for("produtos"))
+            .strip()
+        )
 
-        unidades_validas = {
-            "un",
-            "kg",
-            "g",
-            "L",
-            "ml",
-        }
+        tipo_produto = (
+            request.form.get(
+                "tipo_produto",
+                "Produzido"
+            )
+            .strip()
+        )
 
-        if rendimento_unidade not in unidades_validas:
-            rendimento_unidade = "un"
+        finalidade = (
+            request.form.get(
+                "finalidade",
+                "Venda"
+            )
+            .strip()
+        )
+
+        preco_venda = converter_numero_formulario(
+            request.form.get("preco_venda"),
+            0
+        )
+
+        custo_compra = converter_numero_formulario(
+            request.form.get("custo_compra"),
+            0
+        )
+
+        estoque_produto = converter_numero_formulario(
+            request.form.get("estoque_produto"),
+            0
+        )
+
+        rendimento_quantidade = (
+            converter_numero_formulario(
+                request.form.get(
+                    "rendimento_quantidade"
+                ),
+                1
+            )
+        )
+
+        rendimento_unidade = (
+            request.form.get(
+                "rendimento_unidade",
+                "un"
+            )
+            .strip()
+        )
+
+        if not nome:
+            flash(
+                "Informe o nome do produto.",
+                "erro"
+            )
+
+            return redirect(
+                url_for("produtos")
+            )
+
+        produto_existente = (
+            Produto.query
+            .filter(
+                db.func.lower(Produto.nome)
+                == nome.lower()
+            )
+            .first()
+        )
+
+        if produto_existente:
+            flash(
+                "Já existe um produto com esse nome.",
+                "erro"
+            )
+
+            return redirect(
+                url_for("produtos")
+            )
+
+        if preco_venda < 0:
+            flash(
+                "O preço de venda não pode ser negativo.",
+                "erro"
+            )
+
+            return redirect(
+                url_for("produtos")
+            )
 
         if tipo_produto == "Revenda":
-            rendimento_quantidade = 1.0
+            if custo_compra < 0:
+                flash(
+                    "O custo de compra não pode ser negativo.",
+                    "erro"
+                )
+
+                return redirect(
+                    url_for("produtos")
+                )
+
+            if estoque_produto < 0:
+                flash(
+                    "O estoque inicial não pode ser negativo.",
+                    "erro"
+                )
+
+                return redirect(
+                    url_for("produtos")
+                )
+
+            rendimento_quantidade = 1
             rendimento_unidade = "un"
 
         else:
+            tipo_produto = "Produzido"
             custo_compra = 0
             estoque_produto = 0
 
             if rendimento_quantidade <= 0:
                 flash(
-                    "O rendimento do produto produzido deve ser maior que zero.",
-                    "erro",
+                    (
+                        "O rendimento do produto produzido "
+                        "deve ser maior que zero."
+                    ),
+                    "erro"
                 )
-                return redirect(url_for("produtos"))
+
+                return redirect(
+                    url_for("produtos")
+                )
 
         if finalidade == "Preparo Interno":
             preco_venda = 0
 
-        novo = Produto(
+        novo_produto = Produto(
             nome=nome,
             categoria=categoria,
             preco_venda=preco_venda,
+            ativo=True,
             tipo_produto=tipo_produto,
-            finalidade=finalidade,
             custo_compra=custo_compra,
             estoque_produto=estoque_produto,
-            rendimento_quantidade=rendimento_quantidade,
-            rendimento_unidade=rendimento_unidade,
-            ativo=True,
+            finalidade=finalidade,
+            rendimento_quantidade=(
+                rendimento_quantidade
+            ),
+            rendimento_unidade=(
+                rendimento_unidade
+            )
         )
 
         try:
-            db.session.add(novo)
+            db.session.add(
+                novo_produto
+            )
+
+            db.session.flush()
+
+            # Registra o saldo inicial do produto de revenda.
+            if (
+                tipo_produto == "Revenda"
+                and estoque_produto > 0
+            ):
+                valor_estoque_inicial = (
+                    estoque_produto
+                    * custo_compra
+                )
+
+                movimentacao_inicial = (
+                    MovimentacaoProduto(
+                        produto_id=novo_produto.id,
+                        venda_id=None,
+                        tipo="Entrada",
+                        quantidade=estoque_produto,
+                        valor_total=(
+                            valor_estoque_inicial
+                        ),
+                        observacao=(
+                            "Estoque inicial informado "
+                            "no cadastro do produto."
+                        ),
+                        data=datetime.now()
+                    )
+                )
+
+                db.session.add(
+                    movimentacao_inicial
+                )
+
             db.session.commit()
 
             flash(
-                "Produto cadastrado com sucesso!",
-                "sucesso",
+                "Produto cadastrado com sucesso.",
+                "sucesso"
             )
 
-        except Exception:
+        except Exception as erro:
             db.session.rollback()
+
+            print(
+                "Erro ao cadastrar produto:",
+                erro
+            )
 
             flash(
                 "Não foi possível cadastrar o produto.",
-                "erro",
+                "erro"
             )
 
-        return redirect(url_for("produtos"))
+        return redirect(
+            url_for("produtos")
+        )
 
-    lista = Produto.query.order_by(
-        Produto.nome
-    ).all()
+    produtos_lista = (
+        Produto.query
+        .order_by(
+            Produto.nome.asc()
+        )
+        .all()
+    )
 
     return render_template(
         "produtos.html",
-        produtos=lista,
+        produtos=produtos_lista
     )
 
+
+# =========================================================
+# EDITAR PRODUTO
+# =========================================================
 
 @app.route(
-    "/editar_produto/<int:id>",
-    methods=["POST"],
+    "/editar_produto/<int:produto_id>",
+    methods=["POST"]
 )
-def editar_produto(id):
-    if not usuario_logado():
-        return redirect(url_for("login"))
-
-    produto = Produto.query.get_or_404(id)
-
-    nome = request.form.get(
-        "nome",
-        produto.nome,
-    ).strip()
-
-    categoria = request.form.get(
-        "categoria",
-        produto.categoria or "",
-    ).strip()
-
-    tipo_produto = request.form.get(
-        "tipo_produto",
-        produto.tipo_produto or "Produzido",
-    ).strip()
-
-    finalidade = request.form.get(
-        "finalidade",
-        produto.finalidade or "Venda",
-    ).strip()
-
-    preco_venda = converter_float(
-        request.form.get("preco_venda")
-    )
-
-    custo_compra = converter_float(
-        request.form.get("custo_compra")
-    )
-
-    estoque_produto = converter_float(
-        request.form.get("estoque_produto")
-    )
-
-    rendimento_quantidade = converter_float(
-        request.form.get("rendimento_quantidade"),
-        produto.rendimento_quantidade or 1.0,
-    )
-
-    rendimento_unidade = request.form.get(
-        "rendimento_unidade",
-        produto.rendimento_unidade or "un",
-    ).strip()
-
-    if not nome or not categoria:
-        flash(
-            "Preencha o nome e a categoria do produto.",
-            "erro",
+def editar_produto(produto_id):
+    if "usuario_id" not in session:
+        return redirect(
+            url_for("login")
         )
-        return redirect(url_for("produtos"))
 
-    unidades_validas = {
-        "un",
-        "kg",
-        "g",
-        "L",
-        "ml",
-    }
+    produto = Produto.query.get_or_404(
+        produto_id
+    )
 
-    if rendimento_unidade not in unidades_validas:
-        rendimento_unidade = "un"
+    nome = (
+        request.form.get("nome", "")
+        .strip()
+    )
+
+    categoria = (
+        request.form.get(
+            "categoria",
+            "Outros"
+        )
+        .strip()
+    )
+
+    tipo_produto = (
+        request.form.get(
+            "tipo_produto",
+            produto.tipo_produto
+        )
+        .strip()
+    )
+
+    finalidade = (
+        request.form.get(
+            "finalidade",
+            produto.finalidade
+        )
+        .strip()
+    )
+
+    preco_venda = converter_numero_formulario(
+        request.form.get("preco_venda"),
+        produto.preco_venda or 0
+    )
+
+    custo_compra = converter_numero_formulario(
+        request.form.get("custo_compra"),
+        produto.custo_compra or 0
+    )
+
+    estoque_informado = converter_numero_formulario(
+        request.form.get("estoque_produto"),
+        produto.estoque_produto or 0
+    )
+
+    rendimento_quantidade = (
+        converter_numero_formulario(
+            request.form.get(
+                "rendimento_quantidade"
+            ),
+            produto.rendimento_quantidade or 1
+        )
+    )
+
+    rendimento_unidade = (
+        request.form.get(
+            "rendimento_unidade",
+            produto.rendimento_unidade or "un"
+        )
+        .strip()
+    )
+
+    if not nome:
+        flash(
+            "Informe o nome do produto.",
+            "erro"
+        )
+
+        return redirect(
+            url_for("produtos")
+        )
+
+    produto_com_mesmo_nome = (
+        Produto.query
+        .filter(
+            db.func.lower(Produto.nome)
+            == nome.lower(),
+            Produto.id != produto.id
+        )
+        .first()
+    )
+
+    if produto_com_mesmo_nome:
+        flash(
+            "Já existe outro produto com esse nome.",
+            "erro"
+        )
+
+        return redirect(
+            url_for("produtos")
+        )
+
+    if preco_venda < 0:
+        flash(
+            "O preço de venda não pode ser negativo.",
+            "erro"
+        )
+
+        return redirect(
+            url_for("produtos")
+        )
+
+    estoque_anterior = float(
+        produto.estoque_produto or 0
+    )
+
+    tipo_anterior = produto.tipo_produto
 
     if tipo_produto == "Revenda":
-        rendimento_quantidade = 1.0
+        if custo_compra < 0:
+            flash(
+                "O custo de compra não pode ser negativo.",
+                "erro"
+            )
+
+            return redirect(
+                url_for("produtos")
+            )
+
+        if estoque_informado < 0:
+            flash(
+                "O estoque não pode ser negativo.",
+                "erro"
+            )
+
+            return redirect(
+                url_for("produtos")
+            )
+
+        rendimento_quantidade = 1
         rendimento_unidade = "un"
 
     else:
+        tipo_produto = "Produzido"
         custo_compra = 0
-        estoque_produto = 0
+        estoque_informado = 0
 
         if rendimento_quantidade <= 0:
             flash(
-                "O rendimento do produto produzido deve ser maior que zero.",
-                "erro",
+                "O rendimento deve ser maior que zero.",
+                "erro"
             )
-            return redirect(url_for("produtos"))
+
+            return redirect(
+                url_for("produtos")
+            )
 
     if finalidade == "Preparo Interno":
         preco_venda = 0
 
-    produto.nome = nome
-    produto.categoria = categoria
-    produto.preco_venda = preco_venda
-    produto.tipo_produto = tipo_produto
-    produto.finalidade = finalidade
-    produto.custo_compra = custo_compra
-    produto.estoque_produto = estoque_produto
-    produto.rendimento_quantidade = rendimento_quantidade
-    produto.rendimento_unidade = rendimento_unidade
-
     try:
+        produto.nome = nome
+        produto.categoria = categoria
+        produto.preco_venda = preco_venda
+        produto.tipo_produto = tipo_produto
+        produto.finalidade = finalidade
+        produto.rendimento_quantidade = (
+            rendimento_quantidade
+        )
+        produto.rendimento_unidade = (
+            rendimento_unidade
+        )
+
+        if tipo_produto == "Revenda":
+            produto.custo_compra = custo_compra
+            produto.estoque_produto = (
+                estoque_informado
+            )
+
+            diferenca_estoque = (
+                estoque_informado
+                - estoque_anterior
+            )
+
+            if (
+                tipo_anterior == "Revenda"
+                and abs(diferenca_estoque) > 0.000001
+            ):
+                valor_ajuste = (
+                    abs(diferenca_estoque)
+                    * custo_compra
+                )
+
+                observacao = (
+                    "Ajuste manual de entrada "
+                    "realizado na edição do produto."
+                    if diferenca_estoque > 0
+                    else
+                    "Ajuste manual de saída "
+                    "realizado na edição do produto."
+                )
+
+                movimentacao_ajuste = (
+                    MovimentacaoProduto(
+                        produto_id=produto.id,
+                        venda_id=None,
+                        tipo=(
+                            "Entrada"
+                            if diferenca_estoque > 0
+                            else "Saída"
+                        ),
+                        quantidade=abs(
+                            diferenca_estoque
+                        ),
+                        valor_total=valor_ajuste,
+                        observacao=observacao,
+                        data=datetime.now()
+                    )
+                )
+
+                db.session.add(
+                    movimentacao_ajuste
+                )
+
+            elif (
+                tipo_anterior != "Revenda"
+                and estoque_informado > 0
+            ):
+                movimentacao_conversao = (
+                    MovimentacaoProduto(
+                        produto_id=produto.id,
+                        venda_id=None,
+                        tipo="Entrada",
+                        quantidade=estoque_informado,
+                        valor_total=(
+                            estoque_informado
+                            * custo_compra
+                        ),
+                        observacao=(
+                            "Estoque inicial registrado "
+                            "após alteração para revenda."
+                        ),
+                        data=datetime.now()
+                    )
+                )
+
+                db.session.add(
+                    movimentacao_conversao
+                )
+
+        else:
+            produto.custo_compra = 0
+            produto.estoque_produto = 0
+
         db.session.commit()
 
         flash(
-            "Produto atualizado com sucesso!",
-            "sucesso",
+            "Produto atualizado com sucesso.",
+            "sucesso"
         )
 
-    except Exception:
+    except Exception as erro:
         db.session.rollback()
+
+        print(
+            "Erro ao editar produto:",
+            erro
+        )
 
         flash(
             "Não foi possível atualizar o produto.",
-            "erro",
+            "erro"
         )
 
-    return redirect(url_for("produtos"))
+    return redirect(
+        url_for("produtos")
+    )
 
+
+# =========================================================
+# REGISTRAR COMPRA DE PRODUTO DE REVENDA
+# =========================================================
 
 @app.route(
-    "/excluir_produto/<int:id>",
-    methods=["POST", "GET"],
+    "/registrar_compra_produto/<int:produto_id>",
+    methods=["POST"]
 )
-def excluir_produto(id):
-    if not usuario_logado():
-        return redirect(url_for("login"))
-
-    produto = Produto.query.get_or_404(id)
-
-    if getattr(
-        produto,
-        "fichas_como_base",
-        None,
-    ):
-        flash(
-            "Este produto não pode ser excluído porque está sendo usado "
-            "como preparo interno.",
-            "erro",
+def registrar_compra_produto(produto_id):
+    if "usuario_id" not in session:
+        return redirect(
+            url_for("login")
         )
-        return redirect(url_for("produtos"))
 
-    if produto.ficha_itens:
-        flash(
-            "Exclua primeiro os itens da ficha técnica deste produto.",
-            "erro",
-        )
-        return redirect(url_for("produtos"))
+    produto = Produto.query.get_or_404(
+        produto_id
+    )
 
-    if getattr(
-        produto,
-        "vendas",
-        None,
-    ):
+    if produto.tipo_produto != "Revenda":
         flash(
-            "Este produto não pode ser excluído porque possui vendas registradas.",
-            "erro",
+            (
+                "A entrada por compra está disponível "
+                "somente para produtos de revenda."
+            ),
+            "erro"
         )
-        return redirect(url_for("produtos"))
+
+        return redirect(
+            url_for("produtos")
+        )
+
+    quantidade_comprada = (
+        converter_numero_formulario(
+            request.form.get("quantidade"),
+            0
+        )
+    )
+
+    valor_total_compra = (
+        converter_numero_formulario(
+            request.form.get("valor_total"),
+            0
+        )
+    )
+
+    data_texto = (
+        request.form.get("data", "")
+        .strip()
+    )
+
+    observacao = (
+        request.form.get(
+            "observacao",
+            ""
+        )
+        .strip()
+    )
+
+    if quantidade_comprada <= 0:
+        flash(
+            (
+                "A quantidade comprada deve ser "
+                "maior que zero."
+            ),
+            "erro"
+        )
+
+        return redirect(
+            url_for("produtos")
+        )
+
+    if valor_total_compra <= 0:
+        flash(
+            (
+                "O valor total da compra deve ser "
+                "maior que zero."
+            ),
+            "erro"
+        )
+
+        return redirect(
+            url_for("produtos")
+        )
 
     try:
-        db.session.delete(produto)
+        if data_texto:
+            data_compra = datetime.strptime(
+                data_texto,
+                "%Y-%m-%d"
+            )
+
+        else:
+            data_compra = datetime.now()
+
+    except ValueError:
+        flash(
+            "A data da compra é inválida.",
+            "erro"
+        )
+
+        return redirect(
+            url_for("produtos")
+        )
+
+    estoque_atual = float(
+        produto.estoque_produto or 0
+    )
+
+    custo_medio_atual = float(
+        produto.custo_compra or 0
+    )
+
+    valor_estoque_atual = (
+        estoque_atual
+        * custo_medio_atual
+    )
+
+    novo_estoque = (
+        estoque_atual
+        + quantidade_comprada
+    )
+
+    novo_valor_estoque = (
+        valor_estoque_atual
+        + valor_total_compra
+    )
+
+    if novo_estoque <= 0:
+        novo_custo_medio = 0
+
+    else:
+        novo_custo_medio = (
+            novo_valor_estoque
+            / novo_estoque
+        )
+
+    try:
+        produto.estoque_produto = (
+            novo_estoque
+        )
+
+        produto.custo_compra = (
+            novo_custo_medio
+        )
+
+        movimentacao = MovimentacaoProduto(
+            produto_id=produto.id,
+            venda_id=None,
+            tipo="Entrada",
+            quantidade=quantidade_comprada,
+            valor_total=valor_total_compra,
+            observacao=(
+                observacao
+                or "Compra de produto de revenda."
+            ),
+            data=data_compra
+        )
+
+        db.session.add(
+            movimentacao
+        )
+
+        db.session.commit()
+
+        custo_unitario_compra = (
+            valor_total_compra
+            / quantidade_comprada
+        )
+
+        flash(
+            (
+                f"Compra registrada com sucesso. "
+                f"Custo unitário da compra: "
+                f"R$ {custo_unitario_compra:.2f}. "
+                f"Novo custo médio: "
+                f"R$ {novo_custo_medio:.2f}."
+            ),
+            "sucesso"
+        )
+
+    except Exception as erro:
+        db.session.rollback()
+
+        print(
+            "Erro ao registrar compra:",
+            erro
+        )
+
+        flash(
+            "Não foi possível registrar a compra.",
+            "erro"
+        )
+
+    return redirect(
+        url_for("produtos")
+    )
+
+
+# =========================================================
+# ALTERAR STATUS DO PRODUTO
+# =========================================================
+
+@app.route(
+    "/alterar_status_produto/<int:produto_id>",
+    methods=["POST"]
+)
+def alterar_status_produto(produto_id):
+    if "usuario_id" not in session:
+        return redirect(
+            url_for("login")
+        )
+
+    produto = Produto.query.get_or_404(
+        produto_id
+    )
+
+    try:
+        produto.ativo = not produto.ativo
+
+        db.session.commit()
+
+        status = (
+            "ativado"
+            if produto.ativo
+            else "desativado"
+        )
+
+        flash(
+            f"Produto {status} com sucesso.",
+            "sucesso"
+        )
+
+    except Exception as erro:
+        db.session.rollback()
+
+        print(
+            "Erro ao alterar status do produto:",
+            erro
+        )
+
+        flash(
+            (
+                "Não foi possível alterar "
+                "o status do produto."
+            ),
+            "erro"
+        )
+
+    return redirect(
+        url_for("produtos")
+    )
+
+
+# =========================================================
+# EXCLUIR PRODUTO
+# =========================================================
+
+@app.route(
+    "/excluir_produto/<int:produto_id>",
+    methods=["GET", "POST"]
+)
+def excluir_produto(produto_id):
+    if "usuario_id" not in session:
+        return redirect(
+            url_for("login")
+        )
+
+    produto = Produto.query.get_or_404(
+        produto_id
+    )
+
+    possui_vendas = (
+        Venda.query
+        .filter_by(
+            produto_id=produto.id
+        )
+        .first()
+    )
+
+    if possui_vendas:
+        flash(
+            (
+                "O produto não pode ser excluído porque "
+                "possui vendas registradas. Desative-o "
+                "para preservar o histórico."
+            ),
+            "erro"
+        )
+
+        return redirect(
+            url_for("produtos")
+        )
+
+    utilizado_em_ficha = (
+        FichaTecnica.query
+        .filter_by(
+            produto_base_id=produto.id
+        )
+        .first()
+    )
+
+    if utilizado_em_ficha:
+        flash(
+            (
+                "O produto não pode ser excluído porque "
+                "é utilizado na ficha técnica de outro "
+                "produto."
+            ),
+            "erro"
+        )
+
+        return redirect(
+            url_for("produtos")
+        )
+
+    try:
+        db.session.delete(
+            produto
+        )
+
         db.session.commit()
 
         flash(
-            "Produto excluído com sucesso!",
-            "sucesso",
+            "Produto excluído com sucesso.",
+            "sucesso"
         )
 
-    except Exception:
+    except Exception as erro:
         db.session.rollback()
+
+        print(
+            "Erro ao excluir produto:",
+            erro
+        )
 
         flash(
             "Não foi possível excluir o produto.",
-            "erro",
+            "erro"
         )
 
-    return redirect(url_for("produtos"))
-
-
-@app.route(
-    "/alterar_status_produto/<int:id>",
-    methods=["POST", "GET"],
-)
-def alterar_status_produto(id):
-    if not usuario_logado():
-        return redirect(url_for("login"))
-
-    produto = Produto.query.get_or_404(id)
-    produto.ativo = not produto.ativo
-
-    try:
-        db.session.commit()
-
-        flash(
-            "Status do produto atualizado!",
-            "sucesso",
-        )
-
-    except Exception:
-        db.session.rollback()
-
-        flash(
-            "Não foi possível alterar o status do produto.",
-            "erro",
-        )
-
-    return redirect(url_for("produtos"))
+    return redirect(
+        url_for("produtos")
+    )
 
 
 @app.route("/ficha_tecnica", methods=["GET", "POST"])
@@ -1481,37 +2074,59 @@ def excluir_item_ficha(id):
     )
 
 
-@app.route("/vendas", methods=["GET", "POST"])
+# =========================================================
+# VENDAS
+# =========================================================
+
+@app.route(
+    "/vendas",
+    methods=["GET", "POST"],
+)
 def vendas():
     if not usuario_logado():
-        return redirect(url_for("login"))
-
-    hoje = datetime.now().date()
-
-    # =====================================================
-    # REGISTRAR VENDA
-    # =====================================================
+        return redirect(
+            url_for("login")
+        )
 
     if request.method == "POST":
-        produto_id = request.form.get("produto_id")
+        produto_id = request.form.get(
+            "produto_id"
+        )
 
-        try:
-            quantidade_vendida = int(
-                converter_float(
-                    request.form.get("quantidade")
-                )
-            )
-        except (TypeError, ValueError):
-            flash(
-                "Informe uma quantidade válida.",
-                "erro"
-            )
-            return redirect(url_for("vendas"))
+        quantidade = converter_float(
+            request.form.get("quantidade"),
+            0,
+        )
 
-        data_texto = request.form.get(
-            "data_venda",
-            ""
+        data_venda_texto = (
+            request.form.get(
+                "data_venda",
+                "",
+            )
+            or request.form.get(
+                "data",
+                "",
+            )
+            or ""
         ).strip()
+
+        movimentar_estoque_texto = (
+            request.form.get(
+                "movimentar_estoque",
+                "sim",
+            )
+            or "sim"
+        ).strip().lower()
+
+        movimentar_estoque = (
+            movimentar_estoque_texto
+            not in {
+                "nao",
+                "não",
+                "false",
+                "0",
+            }
+        )
 
         # -------------------------------------------------
         # VALIDAÇÕES INICIAIS
@@ -1520,312 +2135,398 @@ def vendas():
         if not produto_id:
             flash(
                 "Selecione um produto.",
-                "erro"
+                "erro",
             )
-            return redirect(url_for("vendas"))
 
-        if quantidade_vendida <= 0:
-            flash(
-                "A quantidade vendida deve ser maior que zero.",
-                "erro"
+            return redirect(
+                url_for("vendas")
             )
-            return redirect(url_for("vendas"))
-
-        if not data_texto:
-            flash(
-                "Informe a data da venda.",
-                "erro"
-            )
-            return redirect(url_for("vendas"))
 
         try:
-            data_venda = datetime.strptime(
-                data_texto,
-                "%Y-%m-%d"
+            produto_id = int(
+                produto_id
             )
 
-        except ValueError:
+        except (TypeError, ValueError):
             flash(
-                "A data informada é inválida.",
-                "erro"
+                "O produto informado é inválido.",
+                "erro",
             )
-            return redirect(url_for("vendas"))
 
-        if data_venda.date() > hoje:
-            flash(
-                "Não é possível registrar uma venda com data futura.",
-                "erro"
+            return redirect(
+                url_for("vendas")
             )
-            return redirect(url_for("vendas"))
+
+        if quantidade <= 0:
+            flash(
+                "A quantidade vendida deve ser maior que zero.",
+                "erro",
+            )
+
+            return redirect(
+                url_for("vendas")
+            )
 
         produto = Produto.query.get_or_404(
-            int(produto_id)
+            produto_id
         )
 
         if not produto.ativo:
             flash(
-                "Este produto está inativo.",
-                "erro"
+                "Não é possível registrar a venda de um produto desativado.",
+                "erro",
             )
-            return redirect(url_for("vendas"))
 
-        if produto.finalidade == "Preparo Interno":
-            flash(
-                "Preparos internos não podem ser vendidos diretamente.",
-                "erro"
+            return redirect(
+                url_for("vendas")
             )
-            return redirect(url_for("vendas"))
+
+        if produto.finalidade != "Venda":
+            flash(
+                "O item selecionado é um preparo interno e não pode ser vendido diretamente.",
+                "erro",
+            )
+
+            return redirect(
+                url_for("vendas")
+            )
+
+        # -------------------------------------------------
+        # DATA DA VENDA
+        # -------------------------------------------------
+
+        if data_venda_texto:
+            try:
+                data_venda = datetime.strptime(
+                    data_venda_texto,
+                    "%Y-%m-%d",
+                )
+
+            except ValueError:
+                flash(
+                    "A data informada para a venda é inválida.",
+                    "erro",
+                )
+
+                return redirect(
+                    url_for("vendas")
+                )
+
+        else:
+            data_venda = datetime.now()
+
+        # -------------------------------------------------
+        # CÁLCULOS DA VENDA
+        # -------------------------------------------------
+
+        preco_unitario = float(
+            produto.preco_venda or 0
+        )
+
+        custo_unitario = float(
+            produto.custo_materia_prima()
+            or 0
+        )
+
+        receita_total = (
+            preco_unitario
+            * quantidade
+        )
+
+        cmv_total = (
+            custo_unitario
+            * quantidade
+        )
+
+        margem_total = (
+            receita_total
+            - cmv_total
+        )
+
+        # -------------------------------------------------
+        # VALIDAÇÃO DO ESTOQUE DE REVENDA
+        # -------------------------------------------------
 
         if (
-            produto.tipo_produto == "Produzido"
-            and not produto.ficha_itens
+            movimentar_estoque
+            and produto.tipo_produto == "Revenda"
         ):
-            flash(
-                "Este produto ainda não possui ficha técnica cadastrada.",
-                "erro"
+            estoque_atual = float(
+                produto.estoque_produto or 0
             )
-            return redirect(url_for("vendas"))
+
+            if estoque_atual < quantidade:
+                flash(
+                    (
+                        f"Estoque insuficiente para {produto.nome}. "
+                        f"Disponível: {estoque_atual:.2f}. "
+                        f"Quantidade solicitada: {quantidade:.2f}."
+                    ),
+                    "erro",
+                )
+
+                return redirect(
+                    url_for("vendas")
+                )
+
+        # -------------------------------------------------
+        # VALIDAÇÃO DOS INSUMOS DO PRODUTO PRODUZIDO
+        # -------------------------------------------------
+
+        if (
+            movimentar_estoque
+            and produto.tipo_produto == "Produzido"
+        ):
+            for item in produto.ficha_itens:
+                if not item.insumo:
+                    continue
+
+                quantidade_por_unidade = float(
+                    item.quantidade_convertida_para_estoque()
+                    or 0
+                )
+
+                quantidade_necessaria = (
+                    quantidade_por_unidade
+                    * quantidade
+                )
+
+                estoque_disponivel = float(
+                    item.insumo.estoque_atual()
+                    or 0
+                )
+
+                if (
+                    estoque_disponivel
+                    < quantidade_necessaria
+                ):
+                    flash(
+                        (
+                            f"Estoque insuficiente de "
+                            f"{item.insumo.nome}. "
+                            f"Disponível: "
+                            f"{estoque_disponivel:.3f} "
+                            f"{item.insumo.unidade}. "
+                            f"Necessário: "
+                            f"{quantidade_necessaria:.3f} "
+                            f"{item.insumo.unidade}."
+                        ),
+                        "erro",
+                    )
+
+                    return redirect(
+                        url_for("vendas")
+                    )
 
         try:
-            consumos = []
+            # ---------------------------------------------
+            # CRIA A VENDA
+            # ---------------------------------------------
 
-            # =================================================
-            # PRODUTO PRODUZIDO
-            # CALCULAR CONSUMO E VERIFICAR ESTOQUE
-            # =================================================
-
-            if produto.tipo_produto == "Produzido":
-                consumos = calcular_consumo_insumos(
-                    produto,
-                    multiplicador=quantidade_vendida,
-                )
-
-                consumo_agrupado = {}
-
-                for insumo, quantidade in consumos:
-                    if insumo.id not in consumo_agrupado:
-                        consumo_agrupado[insumo.id] = {
-                            "insumo": insumo,
-                            "quantidade": 0.0,
-                        }
-
-                    consumo_agrupado[
-                        insumo.id
-                    ]["quantidade"] += float(
-                        quantidade or 0
-                    )
-
-                faltas = []
-
-                for dados in consumo_agrupado.values():
-                    insumo = dados["insumo"]
-
-                    quantidade_necessaria = float(
-                        dados["quantidade"] or 0
-                    )
-
-                    estoque_disponivel = float(
-                        insumo.estoque_atual() or 0
-                    )
-
-                    if estoque_disponivel < quantidade_necessaria:
-                        faltas.append(
-                            f"{insumo.nome}: necessário "
-                            f"{quantidade_necessaria:.3f}, "
-                            f"disponível "
-                            f"{estoque_disponivel:.3f}"
-                        )
-
-                if faltas:
-                    flash(
-                        "Estoque insuficiente: "
-                        + "; ".join(faltas),
-                        "erro"
-                    )
-                    return redirect(
-                        url_for("vendas")
-                    )
-
-            # =================================================
-            # PRODUTO DE REVENDA
-            # VERIFICAR ESTOQUE
-            # =================================================
-
-            elif produto.tipo_produto == "Revenda":
-                estoque_revenda = float(
-                    produto.estoque_produto or 0
-                )
-
-                if estoque_revenda < quantidade_vendida:
-                    flash(
-                        "Estoque insuficiente para este "
-                        "produto de revenda.",
-                        "erro"
-                    )
-                    return redirect(
-                        url_for("vendas")
-                    )
-
-            # =================================================
-            # CÁLCULOS DA VENDA
-            # =================================================
-
-            preco_unitario = float(
-                produto.preco_venda or 0
-            )
-
-            custo_unitario = float(
-                produto.custo_materia_prima() or 0
-            )
-
-            receita_total_venda = (
-                preco_unitario
-                * quantidade_vendida
-            )
-
-            cmv_total_venda = (
-                custo_unitario
-                * quantidade_vendida
-            )
-
-            margem_total_venda = (
-                receita_total_venda
-                - cmv_total_venda
-            )
-
-            # =================================================
-            # CRIAÇÃO DA VENDA
-            # =================================================
-
-            venda = Venda(
-                data=data_venda,
+            nova_venda = Venda(
                 produto_id=produto.id,
-                quantidade=quantidade_vendida,
-                receita_total=receita_total_venda,
-                cmv_total=cmv_total_venda,
-                margem_total=margem_total_venda,
-                movimentou_estoque=True,
+                data=data_venda,
+                quantidade=quantidade,
+                receita_total=receita_total,
+                cmv_total=cmv_total,
+                margem_total=margem_total,
+                movimentou_estoque=movimentar_estoque,
             )
 
-            db.session.add(venda)
+            db.session.add(
+                nova_venda
+            )
+
+            # Gera o ID da venda antes das movimentações.
             db.session.flush()
 
-            # =================================================
-            # BAIXA DOS INSUMOS DO PRODUTO PRODUZIDO
-            # =================================================
-
-            if produto.tipo_produto == "Produzido":
-                for insumo, quantidade_saida in consumos:
-                    quantidade_saida = float(
-                        quantidade_saida or 0
-                    )
-
-                    if quantidade_saida <= 0:
-                        continue
-
-                    custo_unitario_insumo = float(
-                        insumo.custo_medio_unitario() or 0
-                    )
-
-                    custo_saida = (
-                        quantidade_saida
-                        * custo_unitario_insumo
-                    )
-
-                    saida = MovimentacaoEstoque(
-                        insumo_id=insumo.id,
-                        tipo="Saída",
-                        quantidade=quantidade_saida,
-                        valor_total=custo_saida,
-                        observacao=(
-                            f"Venda de "
-                            f"{quantidade_vendida} un. "
-                            f"- {produto.nome}"
-                        ),
-                        data=data_venda,
-                        venda_id=venda.id,
-                    )
-
-                    db.session.add(saida)
-
-            # =================================================
+            # ---------------------------------------------
             # BAIXA DO PRODUTO DE REVENDA
-            # =================================================
+            # ---------------------------------------------
 
-            elif produto.tipo_produto == "Revenda":
+            if (
+                movimentar_estoque
+                and produto.tipo_produto == "Revenda"
+            ):
+                valor_saida = (
+                    quantidade
+                    * float(
+                        produto.custo_compra or 0
+                    )
+                )
+
                 produto.estoque_produto = (
                     float(
                         produto.estoque_produto or 0
                     )
-                    - quantidade_vendida
+                    - quantidade
                 )
+
+                movimentacao_produto = (
+                    MovimentacaoProduto(
+                        produto_id=produto.id,
+                        venda_id=nova_venda.id,
+                        tipo="Saída",
+                        quantidade=quantidade,
+                        valor_total=valor_saida,
+                        observacao=(
+                            f"Saída referente à venda "
+                            f"nº {nova_venda.id}."
+                        ),
+                        data=data_venda,
+                    )
+                )
+
+                db.session.add(
+                    movimentacao_produto
+                )
+
+            # ---------------------------------------------
+            # BAIXA DOS INSUMOS DO PRODUTO PRODUZIDO
+            # ---------------------------------------------
+
+            elif (
+                movimentar_estoque
+                and produto.tipo_produto == "Produzido"
+            ):
+                for item in produto.ficha_itens:
+                    if not item.insumo:
+                        continue
+
+                    quantidade_por_unidade = float(
+                        item.quantidade_convertida_para_estoque()
+                        or 0
+                    )
+
+                    quantidade_saida = (
+                        quantidade_por_unidade
+                        * quantidade
+                    )
+
+                    custo_medio_insumo = float(
+                        item.insumo.custo_medio_unitario()
+                        or 0
+                    )
+
+                    valor_saida = (
+                        quantidade_saida
+                        * custo_medio_insumo
+                    )
+
+                    movimentacao_insumo = (
+                        MovimentacaoEstoque(
+                            insumo_id=item.insumo.id,
+                            venda_id=nova_venda.id,
+                            tipo="Saída",
+                            quantidade=quantidade_saida,
+                            valor_total=valor_saida,
+                            observacao=(
+                                f"Saída referente à venda "
+                                f"nº {nova_venda.id} — "
+                                f"{produto.nome}."
+                            ),
+                            data=data_venda,
+                        )
+                    )
+
+                    db.session.add(
+                        movimentacao_insumo
+                    )
 
             db.session.commit()
 
-            flash(
-                "Venda registrada e estoque atualizado!",
-                "sucesso"
-            )
+            if movimentar_estoque:
+                mensagem = (
+                    "Venda registrada com sucesso e estoque atualizado."
+                )
 
-        except ValueError as erro:
-            db.session.rollback()
+            else:
+                mensagem = (
+                    "Venda retroativa registrada sem movimentar o estoque."
+                )
 
             flash(
-                str(erro),
-                "erro"
+                mensagem,
+                "sucesso",
             )
 
         except Exception as erro:
             db.session.rollback()
 
             print(
-                f"Erro ao registrar venda: {repr(erro)}",
-                flush=True
+                "Erro ao registrar venda:",
+                erro,
             )
-
-            traceback.print_exc()
 
             flash(
-                f"Não foi possível registrar a venda: {erro}",
-                "erro"
+                (
+                    "Não foi possível registrar a venda. "
+                    "Nenhuma alteração foi realizada."
+                ),
+                "erro",
             )
 
-        return redirect(url_for("vendas"))
+        return redirect(
+            url_for("vendas")
+        )
 
     # =====================================================
     # ABERTURA DA PÁGINA DE VENDAS
     # =====================================================
 
-    produtos_lista = Produto.query.filter_by(
-        ativo=True,
-        finalidade="Venda",
-    ).order_by(
-        Produto.nome
-    ).all()
+    produtos_lista = (
+        Produto.query
+        .filter_by(
+            ativo=True,
+            finalidade="Venda",
+        )
+        .order_by(
+            Produto.nome
+        )
+        .all()
+    )
 
-    vendas_lista = Venda.query.order_by(
-        Venda.data.desc(),
-        Venda.id.desc()
-    ).all()
+    vendas_lista = (
+        Venda.query
+        .order_by(
+            Venda.data.desc(),
+            Venda.id.desc(),
+        )
+        .all()
+    )
 
     receita_total = sum(
-        float(venda.receita_total or 0)
+        float(
+            venda.receita_total or 0
+        )
         for venda in vendas_lista
     )
 
     cmv_total = sum(
-        float(venda.cmv_total or 0)
+        float(
+            venda.cmv_total or 0
+        )
         for venda in vendas_lista
     )
 
     margem_total = sum(
-        float(venda.margem_total or 0)
+        float(
+            venda.margem_total or 0
+        )
         for venda in vendas_lista
     )
 
     quantidade_total = sum(
-        int(venda.quantidade or 0)
+        float(
+            venda.quantidade or 0
+        )
         for venda in vendas_lista
+    )
+
+    vendas_retroativas = sum(
+        1
+        for venda in vendas_lista
+        if not venda.movimentou_estoque
     )
 
     return render_template(
@@ -1836,72 +2537,154 @@ def vendas():
         cmv_total=cmv_total,
         margem_total=margem_total,
         quantidade_total=quantidade_total,
-        vendas_retroativas=0,
-        data_hoje=hoje.strftime("%Y-%m-%d"),
+        vendas_retroativas=vendas_retroativas,
     )
-@app.route(
-    "/excluir_venda/<int:id>",
-    methods=["POST"],
-)
-def excluir_venda(id):
-    if not usuario_logado():
-        return redirect(url_for("login"))
 
-    venda = Venda.query.get_or_404(id)
+
+# =========================================================
+# EXCLUIR VENDA
+# =========================================================
+
+@app.route(
+    "/excluir_venda/<int:venda_id>",
+    methods=["POST", "GET"],
+)
+def excluir_venda(venda_id):
+    if not usuario_logado():
+        return redirect(
+            url_for("login")
+        )
+
+    venda = Venda.query.get_or_404(
+        venda_id
+    )
+
     produto = venda.produto
 
-    movimentou_estoque = bool(
-        venda.movimentou_estoque
-    )
-
     try:
-        if movimentou_estoque:
-            movimentacoes = (
-                MovimentacaoEstoque.query.filter_by(
-                    venda_id=venda.id
-                ).all()
+        # -------------------------------------------------
+        # VENDA RETROATIVA
+        # -------------------------------------------------
+
+        if not venda.movimentou_estoque:
+            db.session.delete(
+                venda
             )
 
-            for movimentacao in movimentacoes:
+            db.session.commit()
+
+            flash(
+                "Venda retroativa excluída com sucesso.",
+                "sucesso",
+            )
+
+            return redirect(
+                url_for("vendas")
+            )
+
+        # -------------------------------------------------
+        # DEVOLUÇÃO DE PRODUTO DE REVENDA
+        # -------------------------------------------------
+
+        if (
+            produto
+            and produto.tipo_produto == "Revenda"
+        ):
+            movimentacoes_produto = (
+                MovimentacaoProduto.query
+                .filter_by(
+                    venda_id=venda.id,
+                    tipo="Saída",
+                )
+                .all()
+            )
+
+            quantidade_devolver = sum(
+                float(
+                    movimentacao.quantidade or 0
+                )
+                for movimentacao
+                in movimentacoes_produto
+            )
+
+            # Compatibilidade com vendas antigas que ainda
+            # não possuem MovimentacaoProduto vinculada.
+            if quantidade_devolver <= 0:
+                quantidade_devolver = float(
+                    venda.quantidade or 0
+                )
+
+            produto.estoque_produto = (
+                float(
+                    produto.estoque_produto or 0
+                )
+                + quantidade_devolver
+            )
+
+            for movimentacao in movimentacoes_produto:
                 db.session.delete(
                     movimentacao
                 )
 
-            if (
-                produto
-                and produto.tipo_produto == "Revenda"
-            ):
-                produto.estoque_produto = (
-                    float(
-                        produto.estoque_produto or 0
-                    )
-                    + int(venda.quantidade or 0)
+        # -------------------------------------------------
+        # DEVOLUÇÃO DOS INSUMOS DO PRODUTO PRODUZIDO
+        # -------------------------------------------------
+
+        elif (
+            produto
+            and produto.tipo_produto == "Produzido"
+        ):
+            movimentacoes_insumo = (
+                MovimentacaoEstoque.query
+                .filter_by(
+                    venda_id=venda.id,
+                    tipo="Saída",
+                )
+                .all()
+            )
+
+            for movimentacao in movimentacoes_insumo:
+                db.session.delete(
+                    movimentacao
                 )
 
-        db.session.delete(venda)
+        # As movimentações de saída são removidas.
+        # Com isso, o estoque calculado dos insumos volta
+        # automaticamente ao saldo anterior.
+
+        db.session.delete(
+            venda
+        )
+
         db.session.commit()
 
         flash(
-            "Venda excluída e estoque restaurado!",
-            "sucesso"
+            (
+                "Venda excluída com sucesso e "
+                "estoque restaurado."
+            ),
+            "sucesso",
         )
 
     except Exception as erro:
         db.session.rollback()
 
         print(
-            f"Erro ao excluir venda: {repr(erro)}",
-            flush=True
+            "Erro ao excluir venda:",
+            erro,
         )
-
-        traceback.print_exc()
 
         flash(
-            "Não foi possível excluir a venda.",
-            "erro"
+            (
+                "Não foi possível excluir a venda. "
+                "Nenhuma alteração foi realizada."
+            ),
+            "erro",
         )
 
-    return redirect(url_for("vendas"))
+    return redirect(
+        url_for("vendas")
+    )
 
 @app.route("/financeiro", methods=["GET", "POST"])
 def financeiro():

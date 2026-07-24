@@ -581,10 +581,6 @@ class MovimentacaoEstoque(db.Model):
 # PRODUTO
 # =========================================================
 
-# =========================================================
-# PRODUTO
-# =========================================================
-
 class Produto(db.Model):
     id = db.Column(
         db.Integer,
@@ -631,8 +627,6 @@ class Produto(db.Model):
         default="Venda"
     )
 
-    # Rendimento total da receita.
-    # Exemplo: o vinagrete rende 2 kg.
     rendimento_quantidade = db.Column(
         db.Float,
         nullable=True,
@@ -645,7 +639,6 @@ class Produto(db.Model):
         default="un"
     )
 
-    # Itens usados para produzir este produto.
     ficha_itens = db.relationship(
         "FichaTecnica",
         foreign_keys="FichaTecnica.produto_id",
@@ -653,18 +646,22 @@ class Produto(db.Model):
         cascade="all, delete-orphan"
     )
 
-    # Fichas em que este produto aparece
-    # como preparo interno.
     fichas_como_base = db.relationship(
         "FichaTecnica",
         foreign_keys="FichaTecnica.produto_base_id",
         back_populates="produto_base"
     )
 
-    # Vendas registradas deste produto.
     vendas = db.relationship(
         "Venda",
         back_populates="produto"
+    )
+
+    movimentacoes_produto = db.relationship(
+        "MovimentacaoProduto",
+        back_populates="produto",
+        cascade="all, delete-orphan",
+        lazy=True
     )
 
     def possui_ficha_tecnica(self):
@@ -675,44 +672,42 @@ class Produto(db.Model):
         produtos_visitados=None
     ):
         """
-        Calcula o custo total do produto.
+        Retorna o custo do produto.
 
-        Produto de revenda:
-        utiliza o custo de compra.
+        Para produto de revenda:
+        utiliza o custo médio de compra.
 
-        Produto produzido:
-        soma os custos dos itens da ficha técnica.
+        Para produto produzido:
+        soma os custos dos componentes da ficha técnica.
         """
 
         if produtos_visitados is None:
             produtos_visitados = set()
 
-        # Evita referência circular entre produtos.
         if self.id in produtos_visitados:
-            return 0.0
+            return 0
 
         produtos_visitados = set(
             produtos_visitados
         )
 
-        produtos_visitados.add(self.id)
+        produtos_visitados.add(
+            self.id
+        )
 
-        # Para produto de revenda, utiliza
-        # diretamente o custo de compra.
-        if self.tipo_produto == "Revenda":
+        if (
+            self.tipo_produto == "Revenda"
+            and not self.ficha_itens
+        ):
             return float(
                 self.custo_compra or 0
             )
 
-        custo_total = 0.0
+        custo_total = 0
 
         for item in self.ficha_itens:
-            custo_item = item.custo_item(
+            custo_total += item.custo_item(
                 produtos_visitados
-            )
-
-            custo_total += float(
-                custo_item or 0
             )
 
         return custo_total
@@ -722,11 +717,6 @@ class Produto(db.Model):
         quantidade,
         unidade_utilizada
     ):
-        """
-        Converte a quantidade utilizada para a unidade
-        em que o rendimento do preparo foi cadastrado.
-        """
-
         quantidade = float(
             quantidade or 0
         )
@@ -771,22 +761,12 @@ class Produto(db.Model):
         unidade_utilizada,
         produtos_visitados=None
     ):
-        """
-        Calcula o custo proporcional da quantidade
-        utilizada de um preparo interno.
-
-        Exemplo:
-        receita custa R$ 20,00 e rende 2 kg;
-        utilização de 50 g;
-        custo proporcional de R$ 0,50.
-        """
-
         rendimento = float(
             self.rendimento_quantidade or 0
         )
 
         if rendimento <= 0:
-            return 0.0
+            return 0
 
         try:
             quantidade_convertida = (
@@ -797,16 +777,17 @@ class Produto(db.Model):
             )
 
         except ValueError:
-            return 0.0
+            return 0
 
-        custo_total_receita = float(
+        custo_total_receita = (
             self.custo_materia_prima(
                 produtos_visitados
-            ) or 0
+            )
         )
 
         proporcao_utilizada = (
-            quantidade_convertida / rendimento
+            quantidade_convertida
+            / rendimento
         )
 
         return (
@@ -815,32 +796,19 @@ class Produto(db.Model):
         )
 
     def custo_por_unidade_produzida(self):
-        """
-        Retorna o custo por unidade de rendimento.
-
-        Exemplos:
-        custo por kg, litro ou unidade.
-        """
-
         rendimento = float(
             self.rendimento_quantidade or 0
         )
 
         if rendimento <= 0:
-            return 0.0
+            return 0
 
-        custo_total = float(
-            self.custo_materia_prima() or 0
+        return (
+            self.custo_materia_prima()
+            / rendimento
         )
 
-        return custo_total / rendimento
-
     def margem_contribuicao(self):
-        """
-        Calcula a diferença entre o preço de venda
-        e o custo do produto.
-        """
-
         preco = float(
             self.preco_venda or 0
         )
@@ -852,76 +820,47 @@ class Produto(db.Model):
         return preco - custo
 
     def percentual_margem(self):
-        """
-        Calcula o percentual de margem em relação
-        ao preço de venda.
-        """
-
         preco = float(
             self.preco_venda or 0
         )
 
         if preco <= 0:
-            return 0.0
-
-        margem = float(
-            self.margem_contribuicao() or 0
-        )
+            return 0
 
         return (
-            margem / preco
+            self.margem_contribuicao()
+            / preco
         ) * 100
 
     def preco_sugerido(
         self,
         margem_desejada=40
     ):
-        """
-        Calcula o preço necessário para alcançar
-        a margem desejada.
-
-        A margem padrão é de 40%.
-        """
-
         custo = float(
             self.custo_materia_prima() or 0
         )
 
         if custo <= 0:
-            return 0.0
+            return 0
 
-        margem = float(
+        percentual = float(
             margem_desejada or 0
         )
 
-        if margem <= 0:
+        if percentual <= 0:
             return custo
 
-        if margem >= 100:
-            margem = 99
+        if percentual >= 100:
+            percentual = 99
 
-        divisor = 1 - (
-            margem / 100
+        return custo / (
+            1 - percentual / 100
         )
-
-        if divisor <= 0:
-            return 0.0
-
-        return custo / divisor
 
     def situacao_preco(
         self,
         margem_minima=40
     ):
-        """
-        Classifica a situação do preço do produto.
-
-        Possíveis resultados:
-        - Sem custo
-        - Revisar
-        - Adequado
-        """
-
         custo = float(
             self.custo_materia_prima() or 0
         )
@@ -936,16 +875,321 @@ class Produto(db.Model):
         if preco <= 0:
             return "Revisar"
 
-        margem = float(
-            self.percentual_margem() or 0
-        )
-
-        if margem < margem_minima:
+        if (
+            self.percentual_margem()
+            < margem_minima
+        ):
             return "Revisar"
 
         return "Adequado"
 
 
+# =========================================================
+# FICHA TÉCNICA
+# =========================================================
+
+class FichaTecnica(db.Model):
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    produto_id = db.Column(
+        db.Integer,
+        db.ForeignKey("produto.id"),
+        nullable=False
+    )
+
+    insumo_id = db.Column(
+        db.Integer,
+        db.ForeignKey("insumo.id"),
+        nullable=True
+    )
+
+    produto_base_id = db.Column(
+        db.Integer,
+        db.ForeignKey("produto.id"),
+        nullable=True
+    )
+
+    quantidade = db.Column(
+        db.Float,
+        nullable=False
+    )
+
+    unidade_utilizada = db.Column(
+        db.String(20),
+        nullable=False
+    )
+
+    produto = db.relationship(
+        "Produto",
+        foreign_keys=[produto_id],
+        back_populates="ficha_itens"
+    )
+
+    insumo = db.relationship(
+        "Insumo",
+        foreign_keys=[insumo_id]
+    )
+
+    produto_base = db.relationship(
+        "Produto",
+        foreign_keys=[produto_base_id],
+        back_populates="fichas_como_base"
+    )
+
+    def nome_item(self):
+        if self.insumo:
+            return self.insumo.nome
+
+        if self.produto_base:
+            return self.produto_base.nome
+
+        return "Item não informado"
+
+    def tipo_item(self):
+        if self.insumo:
+            return "Insumo"
+
+        if self.produto_base:
+            return "Preparo interno"
+
+        return "-"
+
+    def quantidade_convertida_para_estoque(
+        self
+    ):
+        if not self.insumo:
+            return float(
+                self.quantidade or 0
+            )
+
+        quantidade = float(
+            self.quantidade or 0
+        )
+
+        unidade_estoque = (
+            self.insumo.unidade or ""
+        ).strip()
+
+        unidade_usada = (
+            self.unidade_utilizada or ""
+        ).strip()
+
+        if unidade_estoque == unidade_usada:
+            return quantidade
+
+        conversoes = {
+            ("g", "kg"): 0.001,
+            ("kg", "g"): 1000,
+            ("ml", "L"): 0.001,
+            ("L", "ml"): 1000,
+        }
+
+        fator = conversoes.get(
+            (
+                unidade_usada,
+                unidade_estoque
+            )
+        )
+
+        if fator is None:
+            return quantidade
+
+        return quantidade * fator
+
+    def custo_item(
+        self,
+        produtos_visitados=None
+    ):
+        if self.insumo:
+            quantidade_convertida = (
+                self.quantidade_convertida_para_estoque()
+            )
+
+            custo_unitario = float(
+                self.insumo.custo_medio_unitario()
+                or 0
+            )
+
+            return (
+                quantidade_convertida
+                * custo_unitario
+            )
+
+        if self.produto_base:
+            return self.produto_base.custo_proporcional(
+                quantidade=self.quantidade,
+                unidade_utilizada=(
+                    self.unidade_utilizada
+                ),
+                produtos_visitados=(
+                    produtos_visitados
+                )
+            )
+
+        return 0
+
+
+# =========================================================
+# VENDA
+# =========================================================
+
+class Venda(db.Model):
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    data = db.Column(
+        db.DateTime,
+        default=datetime.now
+    )
+
+    produto_id = db.Column(
+        db.Integer,
+        db.ForeignKey("produto.id"),
+        nullable=False
+    )
+
+    quantidade = db.Column(
+        db.Integer,
+        nullable=False
+    )
+
+    receita_total = db.Column(
+        db.Float,
+        default=0
+    )
+
+    cmv_total = db.Column(
+        db.Float,
+        default=0
+    )
+
+    margem_total = db.Column(
+        db.Float,
+        default=0
+    )
+
+    movimentou_estoque = db.Column(
+        db.Boolean,
+        default=True
+    )
+
+    produto = db.relationship(
+        "Produto",
+        back_populates="vendas"
+    )
+
+    movimentacoes = db.relationship(
+        "MovimentacaoEstoque",
+        backref="venda",
+        lazy=True
+    )
+
+    movimentacoes_produto = db.relationship(
+        "MovimentacaoProduto",
+        back_populates="venda",
+        cascade="all, delete-orphan",
+        lazy=True
+    )
+
+    def margem_percentual(self):
+        receita = float(
+            self.receita_total or 0
+        )
+
+        margem = float(
+            self.margem_total or 0
+        )
+
+        if receita <= 0:
+            return 0
+
+        return (
+            margem / receita
+        ) * 100
+
+
+# =========================================================
+# MOVIMENTAÇÃO DE PRODUTO DE REVENDA
+# =========================================================
+
+class MovimentacaoProduto(db.Model):
+    __tablename__ = "movimentacao_produto"
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    data = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.now
+    )
+
+    produto_id = db.Column(
+        db.Integer,
+        db.ForeignKey("produto.id"),
+        nullable=False
+    )
+
+    venda_id = db.Column(
+        db.Integer,
+        db.ForeignKey("venda.id"),
+        nullable=True
+    )
+
+    tipo = db.Column(
+        db.String(20),
+        nullable=False
+    )
+
+    quantidade = db.Column(
+        db.Float,
+        nullable=False,
+        default=0
+    )
+
+    valor_total = db.Column(
+        db.Float,
+        nullable=False,
+        default=0
+    )
+
+    observacao = db.Column(
+        db.String(255),
+        nullable=True
+    )
+
+    produto = db.relationship(
+        "Produto",
+        back_populates="movimentacoes_produto"
+    )
+
+    venda = db.relationship(
+        "Venda",
+        back_populates="movimentacoes_produto"
+    )
+
+    def custo_unitario(self):
+        quantidade = float(
+            self.quantidade or 0
+        )
+
+        valor_total = float(
+            self.valor_total or 0
+        )
+
+        if quantidade <= 0:
+            return 0
+
+        return (
+            valor_total / quantidade
+        )
 # =========================================================
 # FICHA TÉCNICA
 # =========================================================
@@ -1167,6 +1411,13 @@ class Venda(db.Model):
         lazy=True
     )
 
+        # Movimentações de produtos de revenda relacionadas à venda
+    movimentacoes_produto = db.relationship(
+        "MovimentacaoProduto",
+        back_populates="venda",
+        lazy=True,
+    )
+
     def margem_percentual(self):
         receita = float(
             self.receita_total or 0
@@ -1216,3 +1467,100 @@ class Financeiro(db.Model):
         db.Float,
         nullable=False
     )
+
+class MovimentacaoProduto(db.Model):
+    """
+    Registra as entradas, saídas e ajustes de estoque
+    dos produtos classificados como Revenda.
+
+    Exemplos:
+    - Entrada: compra de refrigerantes ou cervejas;
+    - Saída: venda de um produto de revenda;
+    - Ajuste: correção administrativa do estoque.
+    """
+
+    __tablename__ = "movimentacao_produto"
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True,
+    )
+
+    data = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.now,
+    )
+
+    produto_id = db.Column(
+        db.Integer,
+        db.ForeignKey("produto.id"),
+        nullable=False,
+    )
+
+    tipo = db.Column(
+        db.String(20),
+        nullable=False,
+    )
+
+    quantidade = db.Column(
+        db.Float,
+        nullable=False,
+        default=0,
+    )
+
+    valor_total = db.Column(
+        db.Float,
+        nullable=False,
+        default=0,
+    )
+
+    observacao = db.Column(
+        db.String(255),
+        nullable=True,
+    )
+
+    venda_id = db.Column(
+        db.Integer,
+        db.ForeignKey("venda.id"),
+        nullable=True,
+    )
+
+    produto = db.relationship(
+        "Produto",
+        back_populates="movimentacoes_produto",
+    )
+
+    venda = db.relationship(
+        "Venda",
+        back_populates="movimentacoes_produto",
+    )
+
+    def custo_unitario(self):
+        """
+        Retorna o custo unitário da movimentação.
+
+        O cálculo é realizado principalmente nas entradas
+        provenientes das compras dos produtos de revenda.
+        """
+
+        quantidade = float(
+            self.quantidade or 0
+        )
+
+        valor_total = float(
+            self.valor_total or 0
+        )
+
+        if quantidade <= 0:
+            return 0.0
+
+        return valor_total / quantidade
+
+    def __repr__(self):
+        return (
+            f"<MovimentacaoProduto "
+            f"{self.tipo} - "
+            f"Produto {self.produto_id} - "
+            f"{self.quantidade}>"
+        )
