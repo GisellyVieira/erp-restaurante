@@ -388,7 +388,7 @@
 
                                     <form
                                         method="POST"
-                                        action="{{ url_for('excluir_venda', id=venda.id) }}"
+                                        action="{{ url_for('excluir_venda', venda_id=venda.id) }}"
                                         onsubmit="
                                             return confirm(
                                                 'Deseja realmente excluir esta venda?'
